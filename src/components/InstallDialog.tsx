@@ -111,6 +111,22 @@ export function InstallDialog({
             </>
           )}
         </ol>
+
+        {!isFirefox && (
+          <div className="mt-2">
+            <p className="mb-2 text-sm font-semibold text-foreground">Stuck? Watch how it's done</p>
+            <div className="aspect-video overflow-hidden rounded-2xl border border-border bg-ink">
+              <iframe
+                className="size-full"
+                src="https://www.youtube-nocookie.com/embed/xiT8c8M1OIw"
+                title="How to load an unpacked extension"
+                loading="lazy"
+                allow="accelerometer; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
