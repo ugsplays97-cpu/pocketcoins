@@ -150,7 +150,7 @@
       }
       if (!apply(me, m)) return;
       ctx.send(m);
-      if (m.k === "w" && left[me] <= 0) mode = "move";
+      if (m.k === "w") mode = "move";
       after();
     };
     board.onmousemove = (e) => {

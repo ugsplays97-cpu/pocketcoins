@@ -276,21 +276,21 @@
       online[key] = { name: String(p.name || "Player").slice(0, 16), coins: Math.floor(+p.coins || 0), busy: !!p.busy };
     }
     renderPlayers();
+    // Presence updates can briefly drop a player, so only act if they're still gone a few seconds later.
+    clearTimeout(onSync.t);
+    onSync.t = setTimeout(checkGone, 4000);
+  }
+  function checkGone() {
     for (const [id, inv] of invites) if (!online[inv.from]) dropInvite(id, false);
     if (outgoing && !online[outgoing.to]) { const n = outgoing.toName; cancelOutgoing(true); notice(`${esc(n)} went offline.`); }
-    if (duel && !duel.ended && !online[duel.foeId]) {
-      const id = duel.id, foe = duel.foeId;
-      setTimeout(() => {
-        if (duel && duel.id === id && !duel.ended && !online[foe]) endDuel(id, 1, `${esc(duel.foeName)} left the duel.`);
-      }, 4000);
-    }
+    if (duel && !duel.ended && !online[duel.foeId]) endDuel(duel.id, 1, `${esc(duel.foeName)} left the duel.`);
   }
 
   function connect() {
     const sb = window.supabase.createClient(window.PC_CONFIG.url, window.PC_CONFIG.key, {
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
     });
-    lobby = window.__pcLobby = sb.channel("pocket-coins-lobby", { config: { presence: { key: me.id }, broadcast: { self: false } } });
+    lobby = sb.channel("pocket-coins-lobby", { config: { presence: { key: me.id }, broadcast: { self: false } } });
     lobby
       .on("presence", { event: "sync" }, onSync)
       .on("broadcast", { event: "msg" }, ({ payload }) => onMsg(payload))
