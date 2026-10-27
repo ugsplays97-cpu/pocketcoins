@@ -78,13 +78,22 @@
   $("bonus").onclick = () => { if (coins < 10) { setCoins(coins + 50); $("flipResult").innerHTML = `<span class="win-txt">+50 free coins</span>`; } };
 
   // ---------- lobby ----------
-  // Presence updates are debounced so quick coin changes don't flood the lobby.
+  // The lobby allows only a few presence updates per 10 seconds, so updates are
+  // throttled (min 3s apart, latest value wins) and skipped when nothing changed.
+  let lastTrackAt = 0, lastTracked = "";
   function track() {
     if (!lobby || !lobbyReady) return;
     clearTimeout(track.t);
+    const wait = Math.max(0, lastTrackAt + 3000 - Date.now());
     track.t = setTimeout(() => {
-      lobby.track({ name: me.name || "Player", coins, busy: !!(duel && !duel.ended) || !!outgoing });
-    }, 250);
+      if (!lobby || !lobbyReady) return;
+      const data = { name: me.name || "Player", coins, busy: !!(duel && !duel.ended) || !!outgoing };
+      const json = JSON.stringify(data);
+      if (json === lastTracked) return;
+      lastTracked = json;
+      lastTrackAt = Date.now();
+      lobby.track(data);
+    }, wait);
   }
   function send(to, msg) {
     if (!lobby) return;
@@ -287,18 +296,28 @@
     if (duel && !duel.ended && !online[duel.foeId]) endDuel(duel.id, 1, `${esc(duel.foeName)} left the duel.`);
   }
 
+  let sb = null;
   function connect() {
-    const sb = window.supabase.createClient(window.PC_CONFIG.url, window.PC_CONFIG.key, {
+    sb = sb || window.supabase.createClient(window.PC_CONFIG.url, window.PC_CONFIG.key, {
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
     });
-    lobby = sb.channel("pocket-coins-lobby", { config: { presence: { key: me.id }, broadcast: { self: false } } });
-    lobby
-      .on("presence", { event: "sync" }, onSync)
-      .on("broadcast", { event: "msg" }, ({ payload }) => onMsg(payload))
-      .subscribe((status, err) => {
-        console.info("[pc] lobby", status, err ? String(err) : "");
-        if (status === "SUBSCRIBED") { lobbyReady = true; $("pStatus").textContent = "Keep Pocket Coins open to get duel invites. Tip: ⧉ opens it in its own window."; track(); }
-        else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") { lobbyReady = false; $("pStatus").textContent = "Can't reach the lobby right now. Retrying…"; }
+    const ch = sb.channel("pocket-coins-lobby", { config: { presence: { key: me.id }, broadcast: { self: false } } });
+    lobby = ch;
+    ch.on("presence", { event: "sync" }, () => { if (lobby === ch) onSync(); })
+      .on("broadcast", { event: "msg" }, ({ payload }) => { if (lobby === ch) onMsg(payload); })
+      .subscribe((status) => {
+        if (lobby !== ch) return;
+        if (status === "SUBSCRIBED") {
+          lobbyReady = true;
+          lastTracked = "";
+          $("pStatus").textContent = "Keep Pocket Coins open to get duel invites. Tip: ⧉ opens it in its own window.";
+          track();
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+          lobbyReady = false;
+          $("pStatus").textContent = "Reconnecting to the lobby…";
+          clearTimeout(connect.t);
+          connect.t = setTimeout(() => { if (lobby === ch) { sb.removeChannel(ch); connect(); } }, 2000);
+        }
       });
   }
 
