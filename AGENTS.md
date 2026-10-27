@@ -11,3 +11,5 @@
 
 ## Project rules
 - Extension metadata, the hosted extension file and store links live in `src/lib/extension.ts`; when a store link is set, the "Add to browser" button opens the store instead of the manual setup guide — browsers only allow one-click installs from their stores.
+- The extension source lives in `extension/` (plain JS, no build step); after changing it, re-zip it and replace the hosted file referenced by `src/lib/extension.ts`, because the site serves that file, not the folder.
+- Online play uses Lovable Cloud realtime presence + broadcast on one shared lobby channel (no tables); presence updates must stay throttled (min ~3s apart) because the realtime service closes channels that exceed its presence rate limit.

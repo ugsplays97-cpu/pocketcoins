@@ -86,12 +86,7 @@ export function InstallDialog({
                 {gotIt ? "Got it" : "Get Pocket Coins"}
               </a>
             </Button>
-            {!isFirefox && (
-              <p className="mt-3">
-                Then open it and choose <b className="text-foreground">Extract all</b> to make a
-                Pocket Coins folder.
-              </p>
-            )}
+            {!isFirefox && <p className="mt-3">Open the file once so you get a Pocket Coins folder.</p>}
           </Step>
 
           {isFirefox ? (
@@ -100,23 +95,17 @@ export function InstallDialog({
                 <CopyAddress value={page} />
               </Step>
               <Step n={3} title="Click “Load Temporary Add-on…”">
-                Pick the Pocket Coins file you just got. Firefox keeps it until you restart.
+                Pick the Pocket Coins file you just got. That's it.
               </Step>
             </>
           ) : (
             <>
-              <Step n={2} title="Open this address in a new tab">
+              <Step n={2} title="Open this address and switch on “Developer mode”">
                 <CopyAddress value={page} />
               </Step>
-              <Step n={3} title="Switch on “Developer mode”">
-                It's the toggle in the top-right corner.
-              </Step>
-              <Step n={4} title="Click “Load unpacked”">
-                Choose the Pocket Coins folder.
-              </Step>
-              <Step n={5} title="Pin it and play">
+              <Step n={3} title="Click “Load unpacked” and pick the Pocket Coins folder">
                 <span className="inline-flex items-center gap-1">
-                  Click the <Puzzle className="size-4" /> icon in your toolbar and pin Pocket Coins.
+                  Done — find it under the <Puzzle className="size-4" /> icon in your toolbar.
                 </span>
               </Step>
             </>

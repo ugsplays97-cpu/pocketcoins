@@ -14,12 +14,12 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Pocket Coins is a free browser extension: fake coins, a risk dial, mini games and live duels against friends.",
+          "Pocket Coins is a free browser extension: flip pretend coins and duel real players online in Walls, Connect 4, Reaction and more.",
       },
       { property: "og:title", content: "Pocket Coins — a tiny side game for your browser" },
       {
         property: "og:description",
-        content: "Fake coins, a risk dial, mini games and live duels against friends. Free.",
+        content: "Flip pretend coins and duel real players online. Free.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -29,10 +29,10 @@ export const Route = createFileRoute("/")({
 });
 
 const FEATURES = [
-  { emoji: "🎚️", title: "Risk dial", text: "Slide your odds down, crank the payout up." },
-  { emoji: "⚡", title: "Mini games", text: "Reaction duels, quick math and dice." },
-  { emoji: "🌐", title: "Live duels", text: "Make a room, send a 4-letter code, play a friend." },
-  { emoji: "🏆", title: "Rivals", text: "Take their coins. Climb the board." },
+  { emoji: "🧱", title: "Walls", text: "Race your pawn across the board. Drop walls to slow them down." },
+  { emoji: "🔴", title: "Connect 4", text: "Line up four before they do." },
+  { emoji: "⚡", title: "Reaction", text: "Wait for green. Fastest click takes the pot." },
+  { emoji: "✊", title: "Rock Paper Scissors", text: "First to two rounds wins." },
 ];
 
 function Index() {
@@ -80,8 +80,8 @@ function Index() {
               <span className="text-gold">one click away.</span>
             </h1>
             <p className="mt-6 max-w-md text-lg text-muted-foreground">
-              Fake coins, a risk dial, mini games and live duels against friends — tucked into your
-              toolbar.
+              Flip pretend coins, see who's online, and send them a duel — Walls, Connect 4,
+              Reaction or Rock Paper Scissors.
             </p>
 
             <div className="mt-10 flex flex-wrap items-center gap-5">
@@ -113,6 +113,9 @@ function Index() {
           </div>
         </section>
 
+        <h2 className="mb-6 font-display text-3xl font-extrabold tracking-tight">
+          Duel anyone who's online
+        </h2>
         <section className="grid gap-4 pb-24 sm:grid-cols-2 lg:grid-cols-4">
           {FEATURES.map((f) => (
             <div
