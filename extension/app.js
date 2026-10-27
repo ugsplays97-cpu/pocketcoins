@@ -8,7 +8,7 @@
   if (IS_WIN) document.body.classList.add("win");
 
   const rid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
-  const VIEWS = ["home", "setup", "waiting", "duel", "over"];
+  const VIEWS = ["home", "setup", "waiting", "duel", "over", "ownerGate", "owner"];
   const show = (v) => VIEWS.forEach((id) => ($(id).hidden = id !== v));
 
   let coins = 100;
@@ -19,6 +19,8 @@
   let outgoing = null; // { id, to, toName, game, bet, timer }
   const invites = new Map(); // id -> { from, fromName, game, bet, timer }
   let target = null, pickedGame = "walls";
+  // Owner perks (set from the secret owner panel)
+  let owner = { luck: 0, shield: false, wide: false, crown: false };
 
   // ---------- coins ----------
   function setCoins(n) {
@@ -56,26 +58,93 @@
     $("bet").value = Math.max(1, Math.min(v, Math.max(coins, 1)));
   }));
   $("spin").onclick = () => {
-    const bet = Math.floor(+$("bet").value), c = +$("chance").value;
+    const raw = $("bet").value.trim();
+    const bet = Math.floor(+raw), c = +$("chance").value;
     const res = $("flipResult");
+    if (secretStep(raw)) return;
     if (!(bet >= 1) || bet > coins) { res.innerHTML = `<span class="lose-txt">Not enough coins</span>`; return; }
     $("spin").disabled = true;
     const coin = $("flipCoin");
     coin.classList.remove("spin"); void coin.offsetWidth; coin.classList.add("spin");
     res.textContent = "";
     setTimeout(() => {
-      if (Math.random() * 100 < c) {
+      const odds = c + ((100 - c) * owner.luck) / 100;
+      if (Math.random() * 100 < odds) {
         const win = Math.floor((bet * 100) / c) - bet;
         setCoins(coins + win);
         res.innerHTML = `<span class="win-txt">+${win} coins</span>`;
       } else {
-        setCoins(coins - bet);
-        res.innerHTML = `<span class="lose-txt">−${bet} coins</span>`;
+        if (owner.shield) res.innerHTML = `<span class="muted">Lost, but your coins are safe</span>`;
+        else { setCoins(coins - bet); res.innerHTML = `<span class="lose-txt">−${bet} coins</span>`; }
       }
       $("spin").disabled = false;
     }, 700);
   };
   $("bonus").onclick = () => { if (coins < 10) { setCoins(coins + 50); $("flipResult").innerHTML = `<span class="win-txt">+50 free coins</span>`; } };
+
+
+  // ---------- secret owner panel ----------
+  // Unlock: tap a coin logo, then flip with a bet of 0 three times, then enter the password.
+  const PASS_HASH = "6d82ddbfde2dea4f3d91810dbd274c8132a86446a4a2b7b0c28d08db9971917e";
+  const secret = { armedAt: 0, zeros: 0 };
+  const arm = () => { secret.armedAt = Date.now(); secret.zeros = 0; };
+  $("brandLogo").addEventListener("click", arm);
+  $("flipCoin").addEventListener("click", arm);
+  // Returns true when this flip press was part of the secret sequence.
+  function secretStep(raw) {
+    const live = secret.armedAt && Date.now() - secret.armedAt < 30000;
+    if (!live || raw === "" || +raw !== 0) { secret.armedAt = 0; secret.zeros = 0; return false; }
+    secret.zeros++;
+    secret.armedAt = Date.now();
+    if (secret.zeros < 3) return false; // looks like a normal "Not enough coins"
+    secret.armedAt = 0; secret.zeros = 0;
+    $("bet").value = 10;
+    $("flipResult").textContent = "";
+    $("ownerPass").value = "";
+    $("ownerErr").hidden = true;
+    show("ownerGate");
+    setTimeout(() => $("ownerPass").focus(), 0);
+    return true;
+  }
+  async function sha256(text) {
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+    return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  }
+  $("ownerForm").onsubmit = async (e) => {
+    e.preventDefault();
+    const ok = (await sha256($("ownerPass").value)) === PASS_HASH;
+    $("ownerPass").value = "";
+    if (!ok) { $("ownerErr").hidden = false; return; }
+    openOwner();
+  };
+  $("ownerCancel").onclick = () => show("home");
+
+  function saveOwner() { store.set({ owner }); applyOwner(); track(); }
+  function applyOwner() {
+    const ch = $("chance");
+    ch.max = owner.wide ? 99 : 50;
+    if (+ch.value > +ch.max) ch.value = ch.max;
+    updMult();
+    $("oLuck").value = owner.luck;
+    $("oLuckTxt").textContent = owner.luck >= 100 ? "Always win" : owner.luck > 0 ? `+${owner.luck}%` : "Normal";
+    $("oShield").checked = owner.shield;
+    $("oChance").checked = owner.wide;
+    $("oCrown").checked = owner.crown;
+  }
+  function openOwner() { $("oBal").textContent = coins.toLocaleString(); applyOwner(); show("owner"); }
+  const oAmt = () => Math.max(0, Math.floor(+$("oAmount").value) || 0);
+  const ownerCoins = (n) => { setCoins(n); $("oBal").textContent = coins.toLocaleString(); };
+  document.querySelectorAll("[data-amt]").forEach((b) => (b.onclick = () => ($("oAmount").value = b.dataset.amt)));
+  $("oGive").onclick = () => ownerCoins(Math.min(coins + oAmt(), Number.MAX_SAFE_INTEGER));
+  $("oTake").onclick = () => ownerCoins(coins - oAmt());
+  $("oSet").onclick = () => ownerCoins(Math.min(oAmt(), Number.MAX_SAFE_INTEGER));
+  $("oReset").onclick = () => ownerCoins(100);
+  $("oLuck").oninput = () => { owner.luck = +$("oLuck").value; saveOwner(); };
+  $("oShield").onchange = () => { owner.shield = $("oShield").checked; saveOwner(); };
+  $("oChance").onchange = () => { owner.wide = $("oChance").checked; saveOwner(); };
+  $("oCrown").onchange = () => { owner.crown = $("oCrown").checked; saveOwner(); };
+  $("oLock").onclick = () => { owner = { luck: 0, shield: false, wide: false, crown: false }; saveOwner(); show("home"); };
+  $("ownerClose").onclick = () => show("home");
 
   // ---------- lobby ----------
   // The lobby allows only a few presence updates per 10 seconds, so updates are
@@ -87,7 +156,7 @@
     const wait = Math.max(0, lastTrackAt + 3000 - Date.now());
     track.t = setTimeout(() => {
       if (!lobby || !lobbyReady) return;
-      const data = { name: me.name || "Player", coins, busy: !!(duel && !duel.ended) || !!outgoing };
+      const data = { name: me.name || "Player", coins, busy: !!(duel && !duel.ended) || !!outgoing, crown: owner.crown };
       const json = JSON.stringify(data);
       if (json === lastTracked) return;
       lastTracked = json;
@@ -112,7 +181,7 @@
       const p = online[id];
       return `<div class="player ${p.busy ? "busy" : ""}">
         <div class="avatar" style="background:hsl(${hue(id)} 80% 72%)">${esc((p.name || "?")[0].toUpperCase())}</div>
-        <div class="pinfo"><div class="pname">${esc(p.name)}</div>
+        <div class="pinfo"><div class="pname">${esc(p.name)}${p.crown ? `<span class="crown" title="Owner">👑</span>` : ""}</div>
           <div class="pmeta"><span class="online-dot"></span>${p.busy ? "In a duel" : "Online"} · ${p.coins} coins</div></div>
         <button class="duel-btn" data-id="${esc(id)}" ${p.busy ? "disabled" : ""}>Duel</button>
       </div>`;
@@ -229,7 +298,7 @@
     duel.ended = true;
     store.remove("activeDuel");
     if (res > 0) setCoins(coins + duel.bet);
-    else if (res < 0) setCoins(coins - duel.bet);
+    else if (res < 0 && !owner.shield) setCoins(coins - duel.bet);
     $("forfeit").hidden = true;
     const d = duel;
     setTimeout(() => {
@@ -282,7 +351,7 @@
     for (const [key, metas] of Object.entries(state)) {
       if (key === me.id || !metas.length) continue;
       const p = metas[metas.length - 1];
-      online[key] = { name: String(p.name || "Player").slice(0, 16), coins: Math.floor(+p.coins || 0), busy: !!p.busy };
+      online[key] = { name: String(p.name || "Player").slice(0, 16), coins: Math.floor(+p.coins || 0), busy: !!p.busy, crown: p.crown === true };
     }
     renderPlayers();
     // Presence updates can briefly drop a player, so only act if they're still gone a few seconds later.
@@ -333,14 +402,17 @@
   };
 
   // ---------- boot ----------
-  Promise.resolve(store.get(["coins", "name", "pid", "activeDuel"])).then((d) => {
+  Promise.resolve(store.get(["coins", "name", "pid", "activeDuel", "owner"])).then((d) => {
     d = d || {};
     coins = typeof d.coins === "number" ? d.coins : 100;
     me.id = d.pid || rid();
     me.name = d.name || "Player" + Math.floor(100 + Math.random() * 900);
     store.set({ pid: me.id, name: me.name });
     $("name").value = me.name;
-    if (d.activeDuel && d.activeDuel.bet) {
+    if (d.owner && typeof d.owner === "object") owner = { ...owner, ...d.owner };
+    applyOwner();
+    if (d.activeDuel && d.activeDuel.bet && owner.shield) store.remove("activeDuel");
+    else if (d.activeDuel && d.activeDuel.bet) {
       coins = Math.max(0, coins - d.activeDuel.bet);
       store.remove("activeDuel");
       notice(`You left a duel early and lost ${d.activeDuel.bet} coins.`);

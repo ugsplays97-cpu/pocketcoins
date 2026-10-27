@@ -190,3 +190,27 @@ body.win #popout { display: none; }
 .wmodes button { flex: 1; padding: 8px; border-radius: 9px; font-weight: 700; color: var(--muted); }
 .wmodes button.on { background: var(--card-2); color: var(--text); }
 .wmodes button:disabled { opacity: .4; cursor: default; }
+
+/* owner panel */
+.gold { color: var(--gold); font-variant-numeric: tabular-nums; }
+.lock-emoji { font-size: 42px; }
+.o-title { margin: 0; font-size: 18px; font-weight: 800; letter-spacing: -.01em; }
+.gate-form { width: 100%; display: flex; flex-direction: column; gap: 8px; }
+.gate-form p { margin: 0; text-align: center; }
+.o-card { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 12px; background: var(--card); }
+.o-card .muted.small { margin: 0; }
+.o-row { display: flex; gap: 6px; }
+.o-row > * { flex: 1; }
+.o-row .chip { padding: 7px 0; background: var(--bg); border: 1px solid var(--line); border-radius: 9px; }
+.btn-gold.sm, .btn-ghost.sm { padding: 9px 0; font-size: 13px; width: auto; }
+.danger { color: var(--red) !important; }
+.toggle { display: flex; align-items: center; justify-content: space-between; gap: 10px; cursor: pointer; }
+.toggle + .toggle { padding-top: 10px; border-top: 1px solid var(--line); }
+.toggle span { display: flex; flex-direction: column; }
+.toggle small { color: var(--muted); font-size: 11.5px; }
+.toggle input { display: none; }
+.toggle i { flex-shrink: 0; width: 38px; height: 22px; border-radius: 99px; background: var(--card-2); position: relative; transition: background .15s; }
+.toggle i::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--muted); transition: transform .15s, background .15s; }
+.toggle input:checked + i { background: var(--gold-deep); }
+.toggle input:checked + i::after { transform: translateX(16px); background: var(--gold); }
+.crown { margin-left: 4px; }
