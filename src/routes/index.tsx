@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { InstallDialog } from "@/components/InstallDialog";
 import { PopupPreview } from "@/components/PopupPreview";
 import { BROWSER_LABEL, EXTENSION, detectBrowser, storeLinkFor, type BrowserKind } from "@/lib/extension";
-import icon from "@/assets/pocket-coins-icon.png.asset.json";
+import icon from "@/assets/pocket-coins-logo.png.asset.json";
 
 export const Route = createFileRoute("/")({
   head: () => ({
