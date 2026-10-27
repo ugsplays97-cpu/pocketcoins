@@ -1,0 +1,96 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Pocket Coins</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><img src="icon.png" alt=""><span>Pocket Coins</span></div>
+  <div class="top-right">
+    <div class="bal" title="Your coins"><span class="dot"></span><b id="bal">0</b></div>
+    <button id="popout" class="icon-btn" title="Open in its own window">⧉</button>
+  </div>
+</header>
+
+<div id="notice" class="notice" hidden></div>
+<div id="invites" class="invites"></div>
+
+<main id="home">
+  <nav class="tabs">
+    <button data-tab="flip" class="on">Flip</button>
+    <button data-tab="players">Players <span id="onlineCount" class="count">0</span></button>
+  </nav>
+
+  <section id="flip" class="panel">
+    <div class="coin-stage"><img id="flipCoin" class="coin" src="icon.png" alt=""></div>
+    <div class="field">
+      <span class="label">Bet</span>
+      <div class="bet-row">
+        <input id="bet" type="number" min="1" value="10">
+        <button class="chip" data-bet="half">½</button>
+        <button class="chip" data-bet="double">2×</button>
+        <button class="chip" data-bet="max">Max</button>
+      </div>
+    </div>
+    <div class="field">
+      <div class="field-head"><span class="label">Win chance</span><b id="chanceTxt">50%</b></div>
+      <input id="chance" type="range" min="1" max="50" value="50">
+    </div>
+    <div class="payout"><span>Payout</span><b id="mult">×2.00</b></div>
+    <button id="spin" class="btn-gold">Flip</button>
+    <p id="flipResult" class="result"></p>
+    <button id="bonus" class="btn-ghost" hidden>Out of coins? Claim 50</button>
+  </section>
+
+  <section id="players" class="panel" hidden>
+    <label class="field">
+      <span class="label">Your name</span>
+      <input id="name" maxlength="16" placeholder="Player">
+    </label>
+    <div id="plist" class="plist"></div>
+    <p id="pStatus" class="muted small"></p>
+  </section>
+</main>
+
+<section id="setup" class="panel" hidden>
+  <div class="row-head"><button id="setupBack" class="link">← Back</button><span>Duel <b id="setupFoe"></b></span></div>
+  <div id="gamePick" class="game-grid"></div>
+  <div class="field">
+    <span class="label">Bet</span>
+    <input id="duelBet" type="number" min="1" value="10">
+  </div>
+  <p id="setupStatus" class="muted small"></p>
+  <button id="sendInvite" class="btn-gold">Send duel</button>
+</section>
+
+<section id="waiting" class="panel center" hidden>
+  <div class="spinner"></div>
+  <p>Waiting for <b id="waitFoe"></b>…</p>
+  <button id="cancelInvite" class="btn-ghost">Cancel</button>
+</section>
+
+<section id="duel" class="panel" hidden>
+  <div class="duel-head">
+    <div><span id="duelGame"></span> <span class="muted">vs</span> <b id="duelFoe"></b></div>
+    <div class="pot"><span class="dot"></span><b id="duelBetTxt"></b></div>
+  </div>
+  <div id="stage" class="stage"></div>
+  <p id="duelStatus" class="status"></p>
+  <button id="forfeit" class="link danger">Give up</button>
+</section>
+
+<section id="over" class="panel center" hidden>
+  <div id="overEmoji" class="big-emoji"></div>
+  <h2 id="overTitle"></h2>
+  <p id="overText" class="muted"></p>
+  <button id="overBack" class="btn-gold">Back to players</button>
+</section>
+
+<script src="supabase.js"></script>
+<script src="config.js"></script>
+<script src="games.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
