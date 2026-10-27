@@ -54,7 +54,7 @@ export function PopupPreview() {
             alt=""
             width={56}
             height={56}
-            className={cn("size-14 drop-shadow-[0_8px_18px_var(--gold-glow,transparent)]", spinning && "animate-coin-spin [animation-duration:0.6s]")}
+            className={cn("size-14", spinning && "animate-coin-spin [animation-duration:0.6s]")}
           />
         </div>
         <label className="flex flex-col gap-1">
