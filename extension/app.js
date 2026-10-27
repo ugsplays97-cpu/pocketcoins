@@ -284,7 +284,6 @@
       const p = metas[metas.length - 1];
       online[key] = { name: String(p.name || "Player").slice(0, 16), coins: Math.floor(+p.coins || 0), busy: !!p.busy };
     }
-    console.info("[pc] sync", Object.keys(online).length);
     renderPlayers();
     // Presence updates can briefly drop a player, so only act if they're still gone a few seconds later.
     clearTimeout(onSync.t);
