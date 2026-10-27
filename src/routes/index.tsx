@@ -98,9 +98,13 @@ function Index() {
           </div>
 
           <div className="relative flex justify-center">
-            <div className="absolute -top-6 right-6 hidden animate-float text-5xl [--tilt:12deg] sm:block">
-              🪙
-            </div>
+            <img
+              src={icon.url}
+              alt=""
+              width={56}
+              height={56}
+              className="absolute -top-6 right-6 hidden size-14 animate-float [--tilt:12deg] sm:block"
+            />
             <div className="absolute bottom-4 -left-2 hidden animate-float text-4xl [--tilt:-18deg] [animation-delay:1.5s] sm:block">
               🎲
             </div>

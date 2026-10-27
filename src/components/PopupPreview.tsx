@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import logo from "@/assets/pocket-coins-logo.png.asset.json";
 
 /** A playable replica of the extension's "Flip" tab. */
 export function PopupPreview() {
@@ -31,7 +32,10 @@ export function PopupPreview() {
   return (
     <div className="w-[320px] overflow-hidden rounded-3xl border border-border bg-ink text-sm shadow-card">
       <header className="flex items-center justify-between px-4 pt-4 pb-3">
-        <span className="font-display font-extrabold">🪙 Pocket Coins</span>
+        <span className="flex items-center gap-2 font-display font-extrabold">
+          <img src={logo.url} alt="" width={22} height={22} className="size-[22px]" />
+          Pocket Coins
+        </span>
         <span className="flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1">
           <span className="size-2.5 rounded-full bg-gold" />
           <b className="font-mono text-gold">{balance}</b>
@@ -45,7 +49,13 @@ export function PopupPreview() {
       </nav>
       <section className="flex flex-col gap-3 p-4">
         <div className="grid h-14 place-items-center text-4xl [perspective:400px]">
-          <span className={cn(spinning && "animate-coin-spin [animation-duration:0.6s]")}>🪙</span>
+          <img
+            src={logo.url}
+            alt=""
+            width={56}
+            height={56}
+            className={cn("size-14 drop-shadow-[0_8px_18px_var(--gold-glow,transparent)]", spinning && "animate-coin-spin [animation-duration:0.6s]")}
+          />
         </div>
         <label className="flex flex-col gap-1">
           <span className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase">Bet</span>
