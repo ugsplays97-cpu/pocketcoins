@@ -275,6 +275,7 @@
       const p = metas[metas.length - 1];
       online[key] = { name: String(p.name || "Player").slice(0, 16), coins: Math.floor(+p.coins || 0), busy: !!p.busy };
     }
+    console.info("[pc] sync", Object.keys(online).length);
     renderPlayers();
     // Presence updates can briefly drop a player, so only act if they're still gone a few seconds later.
     clearTimeout(onSync.t);
@@ -294,7 +295,8 @@
     lobby
       .on("presence", { event: "sync" }, onSync)
       .on("broadcast", { event: "msg" }, ({ payload }) => onMsg(payload))
-      .subscribe((status) => {
+      .subscribe((status, err) => {
+        console.info("[pc] lobby", status, err ? String(err) : "");
         if (status === "SUBSCRIBED") { lobbyReady = true; $("pStatus").textContent = "Keep Pocket Coins open to get duel invites. Tip: ⧉ opens it in its own window."; track(); }
         else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") { lobbyReady = false; $("pStatus").textContent = "Can't reach the lobby right now. Retrying…"; }
       });
