@@ -78,9 +78,13 @@
   $("bonus").onclick = () => { if (coins < 10) { setCoins(coins + 50); $("flipResult").innerHTML = `<span class="win-txt">+50 free coins</span>`; } };
 
   // ---------- lobby ----------
+  // Presence updates are debounced so quick coin changes don't flood the lobby.
   function track() {
     if (!lobby || !lobbyReady) return;
-    lobby.track({ name: me.name || "Player", coins, busy: !!(duel && !duel.ended) || !!outgoing });
+    clearTimeout(track.t);
+    track.t = setTimeout(() => {
+      lobby.track({ name: me.name || "Player", coins, busy: !!(duel && !duel.ended) || !!outgoing });
+    }, 250);
   }
   function send(to, msg) {
     if (!lobby) return;
@@ -286,7 +290,7 @@
     const sb = window.supabase.createClient(window.PC_CONFIG.url, window.PC_CONFIG.key, {
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
     });
-    lobby = sb.channel("pocket-coins-lobby", { config: { presence: { key: me.id }, broadcast: { self: false } } });
+    lobby = window.__pcLobby = sb.channel("pocket-coins-lobby", { config: { presence: { key: me.id }, broadcast: { self: false } } });
     lobby
       .on("presence", { event: "sync" }, onSync)
       .on("broadcast", { event: "msg" }, ({ payload }) => onMsg(payload))
