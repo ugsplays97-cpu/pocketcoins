@@ -8,3 +8,6 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+## Project rules
+- Extension metadata, the hosted extension file and store links live in `src/lib/extension.ts`; when a store link is set, the "Add to browser" button opens the store instead of the manual setup guide — browsers only allow one-click installs from their stores.
