@@ -75,9 +75,9 @@ function Index() {
               />
             </div>
             <h1 className="font-display text-6xl leading-[0.95] font-extrabold tracking-tight sm:text-7xl">
-              A tiny coin game,
+              la peaceeeeeeee,
               <br />
-              <span className="text-gold">one click away.</span>
+              <span className="text-gold">Why is Anjou lowkey tuff?</span>
             </h1>
             <p className="mt-6 max-w-md text-lg text-muted-foreground">
               Flip pretend coins, see who's online, and send them a duel — Walls, Connect 4,
