@@ -70,7 +70,7 @@ function Index() {
   };
 
   const added = link === "linked";
-  const AddButton = ({ size = "xl" as const }: { size?: "xl" | "default" }) => (
+  const addButton = (size: "xl" | "default" = "xl") => (
     <Button variant="coin" size={size} onClick={addToBrowser} disabled={added}>
       {added ? <Check strokeWidth={3} /> : <Plus strokeWidth={3} />}
       {added ? `Added to ${BROWSER_LABEL[browser]}` : `Add to ${BROWSER_LABEL[browser]}`}
@@ -92,7 +92,7 @@ function Index() {
             <span className="hidden rounded-full border border-border px-3 py-1 font-mono text-xs text-muted-foreground sm:inline">
               v{EXTENSION.version}
             </span>
-            <AddButton size="default" />
+            {addButton("default")}
           </div>
         </nav>
 
@@ -117,7 +117,7 @@ function Index() {
 
             <div className="mt-8 flex flex-col gap-4">
               <div className="flex flex-wrap items-center gap-5">
-                <AddButton />
+                {addButton()}
                 <p className="text-sm text-muted-foreground">
                   Free · No account
                   <br />
@@ -159,7 +159,7 @@ function Index() {
           <p className="max-w-md text-muted-foreground">
             Add Pocket Coins to your browser. Your coins and name sync with this page.
           </p>
-          <AddButton />
+          {addButton()}
         </section>
 
         <footer className="pb-10 text-center text-xs text-muted-foreground">
