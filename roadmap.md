@@ -11,4 +11,5 @@
 - [ ] Website: play the full game on the site, keep "Add to browser", sync coins/name with the extension
 - [ ] Fix owner luck (make it clearly work, flips + duels)
 - [ ] Owner panel: change other online players' luck
+- [ ] Free 50-coin claim: 1-minute wait between claims
 - [ ] True one-click "Add to browser" — waiting on a Chrome Web Store / Firefox Add-ons listing from the user
