@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 rm -rf "$ROOT/public/game"
 mkdir -p "$ROOT/public/game"
-for f in popup.html popup.css icon.png supabase.js config.js store.js games.js app.js; do
+for f in popup.html popup.css icon.png supabase.js config.js store.js rules.js games.js app.js; do
   cp "$ROOT/extension/$f" "$ROOT/public/game/$f"
 done
 echo "public/game updated"
