@@ -101,7 +101,7 @@
   if (window.parent !== window) {
     const post = (msg) => window.parent.postMessage({ source: "pc-game", ...msg }, location.origin);
     store.ready.then((mode) => post({ op: "mode", mode }));
-    const size = () => post({ op: "size", height: document.documentElement.scrollHeight });
+    const size = () => post({ op: "size", height: Math.ceil(document.body.getBoundingClientRect().height) });
     window.addEventListener("load", () => {
       size();
       new ResizeObserver(size).observe(document.body);
