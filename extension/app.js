@@ -1,11 +1,13 @@
 (() => {
   const api = globalThis.browser ?? globalThis.chrome;
-  const store = api.storage.local;
+  const store = window.PC_STORE;
+  const IS_WEB = store.mode !== "extension";
   const $ = (id) => document.getElementById(id);
   const esc = window.PC_ESC;
   const GAMES = window.GAMES;
   const IS_WIN = new URLSearchParams(location.search).has("win");
-  if (IS_WIN) document.body.classList.add("win");
+  if (IS_WIN || IS_WEB) document.body.classList.add("win");
+  if (IS_WEB) document.body.classList.add("web");
 
   const rid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
   const VIEWS = ["home", "setup", "waiting", "duel", "over", "ownerGate", "owner"];
@@ -271,9 +273,17 @@
   $("cancelInvite").onclick = () => cancelOutgoing();
 
   // ---------- duels ----------
+  // The duel is saved (with a heartbeat) so leaving mid-duel counts as giving up,
+  // while another open Pocket Coins window sharing these coins leaves it alone.
+  function beat() {
+    if (duel && !duel.ended) store.set({ activeDuel: { id: duel.id, bet: duel.bet, at: Date.now() } });
+    else clearInterval(beat.t);
+  }
   function startDuel(d) {
     duel = { ...d, ended: false };
-    store.set({ activeDuel: { id: d.id, bet: d.bet } });
+    beat();
+    clearInterval(beat.t);
+    beat.t = setInterval(beat, 5000);
     const g = GAMES[d.game];
     $("duelGame").textContent = `${g.emoji} ${g.name}`;
     $("duelFoe").textContent = d.foeName;
@@ -296,6 +306,7 @@
   function endDuel(id, res, reason) {
     if (!duel || duel.id !== id || duel.ended) return;
     duel.ended = true;
+    clearInterval(beat.t);
     store.remove("activeDuel");
     if (res > 0) setCoins(coins + duel.bet);
     else if (res < 0 && !owner.shield) setCoins(coins - duel.bet);
@@ -378,7 +389,9 @@
         if (status === "SUBSCRIBED") {
           lobbyReady = true;
           lastTracked = "";
-          $("pStatus").textContent = "Keep Pocket Coins open to get duel invites. Tip: ⧉ opens it in its own window.";
+          $("pStatus").textContent = IS_WEB
+            ? "Keep this page open to get duel invites. Players on the website and the extension can duel each other."
+            : "Keep Pocket Coins open to get duel invites. Tip: ⧉ opens it in its own window.";
           track();
         } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
           lobbyReady = false;
@@ -411,7 +424,9 @@
     $("name").value = me.name;
     if (d.owner && typeof d.owner === "object") owner = { ...owner, ...d.owner };
     applyOwner();
-    if (d.activeDuel && d.activeDuel.bet && owner.shield) store.remove("activeDuel");
+    const liveElsewhere = d.activeDuel && d.activeDuel.at && Date.now() - d.activeDuel.at < 15000;
+    if (liveElsewhere) { /* a duel is running in another Pocket Coins window */ }
+    else if (d.activeDuel && d.activeDuel.bet && owner.shield) store.remove("activeDuel");
     else if (d.activeDuel && d.activeDuel.bet) {
       coins = Math.max(0, coins - d.activeDuel.bet);
       store.remove("activeDuel");
@@ -422,5 +437,26 @@
     renderPlayers();
     connect();
   });
+  // Coins, name and owner perks changed in another Pocket Coins window (extension or website).
+  store.onChange((changes) => {
+    if (changes.coins && typeof changes.coins.newValue === "number" && changes.coins.newValue !== coins) {
+      coins = Math.max(0, Math.floor(changes.coins.newValue));
+      $("bal").textContent = coins;
+      $("bonus").hidden = coins >= 10;
+      if (!$("owner").hidden) $("oBal").textContent = coins.toLocaleString();
+      track();
+    }
+    if (changes.name && typeof changes.name.newValue === "string" && changes.name.newValue !== me.name) {
+      me.name = changes.name.newValue.slice(0, 16);
+      $("name").value = me.name;
+      track();
+    }
+    if (changes.owner && changes.owner.newValue && typeof changes.owner.newValue === "object") {
+      owner = { luck: 0, shield: false, wide: false, crown: false, ...changes.owner.newValue };
+      applyOwner();
+      track();
+    }
+  });
+
   window.addEventListener("pagehide", () => { try { lobby && lobby.untrack(); } catch {} });
 })();
