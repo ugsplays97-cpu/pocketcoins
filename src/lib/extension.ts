@@ -1,10 +1,10 @@
-import extensionFile from "@/assets/pocket-coins-1.3.0.zip.asset.json";
+import extensionFile from "@/assets/pocket-coins-1.4.0.zip.asset.json";
 
 export type BrowserKind = "chrome" | "edge" | "brave" | "opera" | "firefox" | "other";
 
 export const EXTENSION = {
   name: "Pocket Coins",
-  version: "1.3.0",
+  version: "1.4.0",
   fileUrl: extensionFile.url,
   fileName: "pocket-coins.zip",
   /**
