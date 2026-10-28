@@ -9,6 +9,8 @@ export type GameLink = "checking" | "linked" | "local";
 export function WebGame({ onLink }: { onLink?: (link: GameLink) => void }) {
   const frame = useRef<HTMLIFrameElement>(null);
   const [height, setHeight] = useState(600);
+  const ping = () =>
+    frame.current?.contentWindow?.postMessage({ source: "pc-host", op: "ping" }, window.location.origin);
 
   useEffect(() => {
     const onMessage = (e: MessageEvent) => {
@@ -19,6 +21,7 @@ export function WebGame({ onLink }: { onLink?: (link: GameLink) => void }) {
       if (m.op === "mode") onLink?.(m.mode === "linked" ? "linked" : "local");
     };
     window.addEventListener("message", onMessage);
+    ping();
     return () => window.removeEventListener("message", onMessage);
   }, [onLink]);
 
@@ -31,6 +34,7 @@ export function WebGame({ onLink }: { onLink?: (link: GameLink) => void }) {
         className="block w-full border-0"
         style={{ height }}
         allow="clipboard-write"
+        onLoad={ping}
       />
     </div>
   );
