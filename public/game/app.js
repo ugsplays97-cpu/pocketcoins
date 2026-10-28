@@ -25,11 +25,11 @@
   let owner = { luck: 0, shield: false, wide: false, crown: false };
   // Luck an owner gave this player from their owner panel (-100..100).
   let given = 0;
-  const clampLuck = (n) => Math.max(-100, Math.min(100, Math.round(+n) || 0));
+  const RULES = window.PC_RULES;
+  const clampLuck = RULES.clampLuck;
   const luck = () => clampLuck(owner.luck + given);
   const luckLabel = (n) => n >= 100 ? "Always win" : n <= -100 ? "Always lose" : n > 0 ? `+${n}%` : n < 0 ? `${n}%` : "Normal";
   // Free coins can be claimed once a minute.
-  const BONUS_WAIT = 60000;
   let bonusAt = 0;
 
   // ---------- coins ----------
@@ -78,8 +78,7 @@
     coin.classList.remove("spin"); void coin.offsetWidth; coin.classList.add("spin");
     res.textContent = "";
     setTimeout(() => {
-      const L = luck();
-      const odds = L >= 0 ? c + ((100 - c) * L) / 100 : c * (1 + L / 100);
+      const odds = RULES.flipOdds(c, luck());
       if (Math.random() * 100 < odds) {
         const win = Math.floor((bet * 100) / c) - bet;
         setCoins(coins + win);
@@ -96,13 +95,13 @@
     b.hidden = coins >= 10;
     clearTimeout(updBonus.t);
     if (b.hidden) return;
-    const left = Math.ceil((bonusAt + BONUS_WAIT - Date.now()) / 1000);
+    const left = RULES.bonusLeft(bonusAt, Date.now());
     b.disabled = left > 0;
     b.textContent = left > 0 ? `Free 50 coins in ${left}s` : "Out of coins? Claim 50";
     if (left > 0) updBonus.t = setTimeout(updBonus, 1000);
   }
   $("bonus").onclick = () => {
-    if (coins >= 10 || Date.now() - bonusAt < BONUS_WAIT) return updBonus();
+    if (coins >= 10 || RULES.bonusLeft(bonusAt, Date.now()) > 0) return updBonus();
     bonusAt = Date.now();
     store.set({ bonusAt });
     setCoins(coins + 50);
