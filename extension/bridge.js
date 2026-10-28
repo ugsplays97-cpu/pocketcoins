@@ -3,7 +3,7 @@
 (() => {
   const api = globalThis.browser ?? globalThis.chrome;
   const local = api.storage.local;
-  const KEYS = ["coins", "name", "pid", "owner", "activeDuel"];
+  const KEYS = ["coins", "name", "pid", "owner", "activeDuel", "luck", "bonusAt"];
   const only = (data) => Object.fromEntries(Object.entries(data || {}).filter(([k]) => KEYS.includes(k)));
   const reply = (rid, result) => window.postMessage({ source: "pc-ext", rid, result }, location.origin);
 

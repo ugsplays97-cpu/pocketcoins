@@ -26,14 +26,17 @@ body {
 body.win { width: auto; }
 body.web { min-height: 0; padding-bottom: 8px; }
 body.web #popout { display: none; }
+.lucky { align-self: center; font-size: 12px; font-weight: 800; color: var(--green); background: rgba(74, 222, 128, .12); padding: 3px 10px; border-radius: 999px; }
+#bonus:disabled { opacity: .6; cursor: default; }
 [hidden] { display: none !important; }
 button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; }
-input {
+input, select {
   font: inherit; color: var(--text); width: 100%;
   background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px;
   outline: none; transition: border-color .15s;
 }
-input:focus { border-color: var(--gold); }
+select { cursor: pointer; }
+input:focus, select:focus { border-color: var(--gold); }
 input[type="range"] { padding: 0; border: 0; accent-color: var(--gold); background: none; }
 .muted { color: var(--muted); }
 .small { font-size: 12px; }
