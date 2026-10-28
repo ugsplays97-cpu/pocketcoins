@@ -1,11 +1,13 @@
 (() => {
   const api = globalThis.browser ?? globalThis.chrome;
-  const store = api.storage.local;
+  const store = window.PC_STORE;
+  const IS_WEB = store.mode !== "extension";
   const $ = (id) => document.getElementById(id);
   const esc = window.PC_ESC;
   const GAMES = window.GAMES;
   const IS_WIN = new URLSearchParams(location.search).has("win");
-  if (IS_WIN) document.body.classList.add("win");
+  if (IS_WIN || IS_WEB) document.body.classList.add("win");
+  if (IS_WEB) document.body.classList.add("web");
 
   const rid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
   const VIEWS = ["home", "setup", "waiting", "duel", "over", "ownerGate", "owner"];
@@ -21,13 +23,21 @@
   let target = null, pickedGame = "walls";
   // Owner perks (set from the secret owner panel)
   let owner = { luck: 0, shield: false, wide: false, crown: false };
+  // Luck an owner gave this player from their owner panel (-100..100).
+  let given = 0;
+  const RULES = window.PC_RULES;
+  const clampLuck = RULES.clampLuck;
+  const luck = () => clampLuck(owner.luck + given);
+  const luckLabel = (n) => n >= 100 ? "Always win" : n <= -100 ? "Always lose" : n > 0 ? `+${n}%` : n < 0 ? `${n}%` : "Normal";
+  // Free coins can be claimed once a minute.
+  let bonusAt = 0;
 
   // ---------- coins ----------
   function setCoins(n) {
     coins = Math.max(0, Math.floor(n));
     $("bal").textContent = coins;
     store.set({ coins });
-    $("bonus").hidden = coins >= 10;
+    updBonus();
     track();
   }
   function notice(html) {
@@ -68,7 +78,7 @@
     coin.classList.remove("spin"); void coin.offsetWidth; coin.classList.add("spin");
     res.textContent = "";
     setTimeout(() => {
-      const odds = c + ((100 - c) * owner.luck) / 100;
+      const odds = RULES.flipOdds(c, luck());
       if (Math.random() * 100 < odds) {
         const win = Math.floor((bet * 100) / c) - bet;
         setCoins(coins + win);
@@ -80,7 +90,23 @@
       $("spin").disabled = false;
     }, 700);
   };
-  $("bonus").onclick = () => { if (coins < 10) { setCoins(coins + 50); $("flipResult").innerHTML = `<span class="win-txt">+50 free coins</span>`; } };
+  function updBonus() {
+    const b = $("bonus");
+    b.hidden = coins >= 10;
+    clearTimeout(updBonus.t);
+    if (b.hidden) return;
+    const left = RULES.bonusLeft(bonusAt, Date.now());
+    b.disabled = left > 0;
+    b.textContent = left > 0 ? `Free 50 coins in ${left}s` : "Out of coins? Claim 50";
+    if (left > 0) updBonus.t = setTimeout(updBonus, 1000);
+  }
+  $("bonus").onclick = () => {
+    if (coins >= 10 || RULES.bonusLeft(bonusAt, Date.now()) > 0) return updBonus();
+    bonusAt = Date.now();
+    store.set({ bonusAt });
+    setCoins(coins + 50);
+    $("flipResult").innerHTML = `<span class="win-txt">+50 free coins</span>`;
+  };
 
 
   // ---------- secret owner panel ----------
@@ -126,12 +152,39 @@
     if (+ch.value > +ch.max) ch.value = ch.max;
     updMult();
     $("oLuck").value = owner.luck;
-    $("oLuckTxt").textContent = owner.luck >= 100 ? "Always win" : owner.luck > 0 ? `+${owner.luck}%` : "Normal";
+    $("oLuckTxt").textContent = luckLabel(owner.luck);
+    $("luckBadge").hidden = !(owner.luck > 0);
+    $("luckBadge").textContent = `🍀 Luck ${luckLabel(owner.luck)}`;
     $("oShield").checked = owner.shield;
     $("oChance").checked = owner.wide;
     $("oCrown").checked = owner.crown;
   }
-  function openOwner() { $("oBal").textContent = coins.toLocaleString(); applyOwner(); show("owner"); }
+  function openOwner() { $("oBal").textContent = coins.toLocaleString(); applyOwner(); renderTargets(); $("oPStatus").textContent = "Above 0 helps them win flips and keep coins in duels. Below 0 makes their flips lose more."; show("owner"); }
+
+  // ----- other players' luck -----
+  function renderTargets() {
+    const sel = $("oTarget"), cur = sel.value;
+    const ids = Object.keys(online).sort((a, b) => online[a].name.localeCompare(online[b].name));
+    sel.innerHTML = ids.length
+      ? ids.map((id) => `<option value="${esc(id)}">${esc(online[id].name)} · luck ${luckLabel(online[id].luck)}</option>`).join("")
+      : `<option value="">Nobody else is online</option>`;
+    if (cur && online[cur]) sel.value = cur;
+    sel.disabled = $("oSendLuck").disabled = !ids.length;
+    if (!sel.dataset.touched && sel.value && online[sel.value]) setPLuck(online[sel.value].luck);
+  }
+  function setPLuck(n) { $("oPLuck").value = n; $("oPLuckTxt").textContent = luckLabel(+n); }
+  $("oTarget").onchange = () => { $("oTarget").dataset.touched = ""; delete $("oTarget").dataset.touched; const p = online[$("oTarget").value]; if (p) setPLuck(p.luck); };
+  $("oPLuck").oninput = () => { $("oTarget").dataset.touched = "1"; setPLuck($("oPLuck").value); };
+  $("oSendLuck").onclick = () => {
+    const id = $("oTarget").value, p = online[id];
+    if (!p) { $("oPStatus").textContent = "That player just went offline."; return; }
+    const n = clampLuck($("oPLuck").value);
+    send(id, { t: "luck", luck: n });
+    p.luck = n;
+    delete $("oTarget").dataset.touched;
+    renderTargets();
+    $("oPStatus").innerHTML = `<span class="win-txt">${esc(p.name)}'s luck is now ${luckLabel(n)}.</span>`;
+  };
   const oAmt = () => Math.max(0, Math.floor(+$("oAmount").value) || 0);
   const ownerCoins = (n) => { setCoins(n); $("oBal").textContent = coins.toLocaleString(); };
   document.querySelectorAll("[data-amt]").forEach((b) => (b.onclick = () => ($("oAmount").value = b.dataset.amt)));
@@ -156,7 +209,7 @@
     const wait = Math.max(0, lastTrackAt + 3000 - Date.now());
     track.t = setTimeout(() => {
       if (!lobby || !lobbyReady) return;
-      const data = { name: me.name || "Player", coins, busy: !!(duel && !duel.ended) || !!outgoing, crown: owner.crown };
+      const data = { name: me.name || "Player", coins, busy: !!(duel && !duel.ended) || !!outgoing, crown: owner.crown, luck: given };
       const json = JSON.stringify(data);
       if (json === lastTracked) return;
       lastTracked = json;
@@ -271,9 +324,17 @@
   $("cancelInvite").onclick = () => cancelOutgoing();
 
   // ---------- duels ----------
+  // The duel is saved (with a heartbeat) so leaving mid-duel counts as giving up,
+  // while another open Pocket Coins window sharing these coins leaves it alone.
+  function beat() {
+    if (duel && !duel.ended) store.set({ activeDuel: { id: duel.id, bet: duel.bet, at: Date.now() } });
+    else clearInterval(beat.t);
+  }
   function startDuel(d) {
     duel = { ...d, ended: false };
-    store.set({ activeDuel: { id: d.id, bet: d.bet } });
+    beat();
+    clearInterval(beat.t);
+    beat.t = setInterval(beat, 5000);
     const g = GAMES[d.game];
     $("duelGame").textContent = `${g.emoji} ${g.name}`;
     $("duelFoe").textContent = d.foeName;
@@ -296,9 +357,14 @@
   function endDuel(id, res, reason) {
     if (!duel || duel.id !== id || duel.ended) return;
     duel.ended = true;
+    clearInterval(beat.t);
     store.remove("activeDuel");
+    let saved = false;
     if (res > 0) setCoins(coins + duel.bet);
-    else if (res < 0 && !owner.shield) setCoins(coins - duel.bet);
+    else if (res < 0 && !owner.shield) {
+      saved = luck() > 0 && Math.random() * 100 < luck();
+      if (!saved) setCoins(coins - duel.bet);
+    }
     $("forfeit").hidden = true;
     const d = duel;
     setTimeout(() => {
@@ -306,7 +372,9 @@
       $("overEmoji").textContent = res > 0 ? "🏆" : res < 0 ? "💸" : "🤝";
       $("overTitle").textContent = res > 0 ? "You won!" : res < 0 ? "You lost" : "It's a tie";
       $("overText").innerHTML = (reason ? reason + " " : "") +
-        (res > 0 ? `<span class="win-txt">+${d.bet} coins</span>` : res < 0 ? `<span class="lose-txt">−${d.bet} coins</span>` : "No coins changed hands.");
+        (res > 0 ? `<span class="win-txt">+${d.bet} coins</span>`
+          : res < 0 && (saved || owner.shield) ? `<span class="win-txt">🍀 Lucky! You kept your coins.</span>`
+          : res < 0 ? `<span class="lose-txt">−${d.bet} coins</span>` : "No coins changed hands.");
       show("over");
       track();
     }, reason ? 0 : 1600);
@@ -340,6 +408,10 @@
       } else send(m.from, { t: "quit", id: m.id });
     } else if (m.t === "move") {
       if (duel && duel.id === m.id && !duel.ended && m.from === duel.foeId) duel.handle?.onMove(m.move || {});
+    } else if (m.t === "luck") {
+      given = clampLuck(m.luck);
+      store.set({ luck: given });
+      track();
     } else if (m.t === "quit") {
       if (duel && duel.id === m.id && !duel.ended) endDuel(m.id, 1, `${esc(duel.foeName)} gave up.`);
     }
@@ -351,9 +423,10 @@
     for (const [key, metas] of Object.entries(state)) {
       if (key === me.id || !metas.length) continue;
       const p = metas[metas.length - 1];
-      online[key] = { name: String(p.name || "Player").slice(0, 16), coins: Math.floor(+p.coins || 0), busy: !!p.busy, crown: p.crown === true };
+      online[key] = { name: String(p.name || "Player").slice(0, 16), coins: Math.floor(+p.coins || 0), busy: !!p.busy, crown: p.crown === true, luck: clampLuck(p.luck) };
     }
     renderPlayers();
+    if (!$("owner").hidden) renderTargets();
     // Presence updates can briefly drop a player, so only act if they're still gone a few seconds later.
     clearTimeout(onSync.t);
     onSync.t = setTimeout(checkGone, 4000);
@@ -378,7 +451,9 @@
         if (status === "SUBSCRIBED") {
           lobbyReady = true;
           lastTracked = "";
-          $("pStatus").textContent = "Keep Pocket Coins open to get duel invites. Tip: ⧉ opens it in its own window.";
+          $("pStatus").textContent = IS_WEB
+            ? "Keep this page open to get duel invites. Players on the website and the extension can duel each other."
+            : "Keep Pocket Coins open to get duel invites. Tip: ⧉ opens it in its own window.";
           track();
         } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
           lobbyReady = false;
@@ -402,7 +477,7 @@
   };
 
   // ---------- boot ----------
-  Promise.resolve(store.get(["coins", "name", "pid", "activeDuel", "owner"])).then((d) => {
+  Promise.resolve(store.get(["coins", "name", "pid", "activeDuel", "owner", "luck", "bonusAt"])).then((d) => {
     d = d || {};
     coins = typeof d.coins === "number" ? d.coins : 100;
     me.id = d.pid || rid();
@@ -410,8 +485,12 @@
     store.set({ pid: me.id, name: me.name });
     $("name").value = me.name;
     if (d.owner && typeof d.owner === "object") owner = { ...owner, ...d.owner };
+    given = clampLuck(d.luck);
+    bonusAt = typeof d.bonusAt === "number" && d.bonusAt <= Date.now() ? d.bonusAt : 0;
     applyOwner();
-    if (d.activeDuel && d.activeDuel.bet && owner.shield) store.remove("activeDuel");
+    const liveElsewhere = d.activeDuel && d.activeDuel.at && Date.now() - d.activeDuel.at < 15000;
+    if (liveElsewhere) { /* a duel is running in another Pocket Coins window */ }
+    else if (d.activeDuel && d.activeDuel.bet && owner.shield) store.remove("activeDuel");
     else if (d.activeDuel && d.activeDuel.bet) {
       coins = Math.max(0, coins - d.activeDuel.bet);
       store.remove("activeDuel");
@@ -422,5 +501,28 @@
     renderPlayers();
     connect();
   });
+  // Coins, name and owner perks changed in another Pocket Coins window (extension or website).
+  store.onChange((changes) => {
+    if (changes.coins && typeof changes.coins.newValue === "number" && changes.coins.newValue !== coins) {
+      coins = Math.max(0, Math.floor(changes.coins.newValue));
+      $("bal").textContent = coins;
+      updBonus();
+      if (!$("owner").hidden) $("oBal").textContent = coins.toLocaleString();
+      track();
+    }
+    if (changes.name && typeof changes.name.newValue === "string" && changes.name.newValue !== me.name) {
+      me.name = changes.name.newValue.slice(0, 16);
+      $("name").value = me.name;
+      track();
+    }
+    if (changes.luck) { given = clampLuck(changes.luck.newValue); track(); }
+    if (changes.bonusAt && typeof changes.bonusAt.newValue === "number") { bonusAt = changes.bonusAt.newValue; updBonus(); }
+    if (changes.owner && changes.owner.newValue && typeof changes.owner.newValue === "object") {
+      owner = { luck: 0, shield: false, wide: false, crown: false, ...changes.owner.newValue };
+      applyOwner();
+      track();
+    }
+  });
+
   window.addEventListener("pagehide", () => { try { lobby && lobby.untrack(); } catch {} });
 })();

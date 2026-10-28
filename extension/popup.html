@@ -39,6 +39,7 @@
       <input id="chance" type="range" min="1" max="50" value="50">
     </div>
     <div class="payout"><span>Payout</span><b id="mult">×2.00</b></div>
+    <span id="luckBadge" class="lucky" hidden></span>
     <button id="spin" class="btn-gold">Flip</button>
     <p id="flipResult" class="result"></p>
     <button id="bonus" class="btn-ghost" hidden>Out of coins? Claim 50</button>
@@ -121,7 +122,15 @@
   <div class="o-card">
     <div class="field-head"><span class="label">Luck</span><b id="oLuckTxt" class="gold">Normal</b></div>
     <input id="oLuck" type="range" min="0" max="100" value="0">
-    <p class="muted small">Boosts your flip odds. 100% means every flip wins.</p>
+    <p class="muted small">Boosts your flip odds (100% = every flip wins) and gives the same chance to keep your coins when you lose a duel.</p>
+  </div>
+
+  <div class="o-card">
+    <div class="field-head"><span class="label">Players' luck</span><b id="oPLuckTxt" class="gold">Normal</b></div>
+    <select id="oTarget"></select>
+    <input id="oPLuck" type="range" min="-100" max="100" value="0">
+    <button id="oSendLuck" class="btn-gold sm">Set their luck</button>
+    <p id="oPStatus" class="muted small">Above 0 helps them win flips and keep coins in duels. Below 0 makes their flips lose more.</p>
   </div>
 
   <div class="o-card">
@@ -138,6 +147,8 @@
 
 <script src="supabase.js"></script>
 <script src="config.js"></script>
+<script src="store.js"></script>
+<script src="rules.js"></script>
 <script src="games.js"></script>
 <script src="app.js"></script>
 </body>
