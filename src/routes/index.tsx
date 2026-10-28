@@ -1,25 +1,25 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { Plus } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Check, Laptop, Plus, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InstallDialog } from "@/components/InstallDialog";
-import { PopupPreview } from "@/components/PopupPreview";
+import { WebGame, type GameLink } from "@/components/WebGame";
 import { BROWSER_LABEL, EXTENSION, detectBrowser, storeLinkFor, type BrowserKind } from "@/lib/extension";
 import icon from "@/assets/pocket-coins-logo.png.asset.json";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Pocket Coins — Add the tiny coin game to your browser" },
+      { title: "Pocket Coins — Play the coin game online, free" },
       {
         name: "description",
         content:
-          "Pocket Coins is a free browser extension: flip pretend coins and duel real players online in Walls, Connect 4, Reaction and more.",
+          "Play Pocket Coins right in your browser: flip pretend coins and duel real players in Walls, Connect 4, Reaction and Rock Paper Scissors. Add the extension to play from any tab.",
       },
-      { property: "og:title", content: "Pocket Coins — a tiny side game for your browser" },
+      { property: "og:title", content: "Pocket Coins — flip coins and duel players online" },
       {
         property: "og:description",
-        content: "Flip pretend coins and duel real players online. Free.",
+        content: "Play free on the web or add it to your browser. Your coins sync.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -35,9 +35,29 @@ const FEATURES = [
   { emoji: "✊", title: "Rock Paper Scissors", text: "First to two rounds wins." },
 ];
 
+function SyncStatus({ link }: { link: GameLink }) {
+  if (link === "linked")
+    return (
+      <p className="flex items-center gap-2 text-sm font-semibold text-win">
+        <RefreshCw className="size-4" />
+        Synced with your extension — same coins, same name.
+      </p>
+    );
+  if (link === "local")
+    return (
+      <p className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Laptop className="size-4" />
+        Playing on the web. Add the extension and your coins come with you.
+      </p>
+    );
+  return <p className="h-5" />;
+}
+
 function Index() {
   const [browser, setBrowser] = useState<BrowserKind>("chrome");
   const [open, setOpen] = useState(false);
+  const [link, setLink] = useState<GameLink>("checking");
+  const onLink = useCallback((l: GameLink) => setLink(l), []);
 
   useEffect(() => {
     detectBrowser().then(setBrowser);
@@ -49,77 +69,76 @@ function Index() {
     else setOpen(true);
   };
 
+  const added = link === "linked";
+  const AddButton = ({ size = "xl" as const }: { size?: "xl" | "default" }) => (
+    <Button variant="coin" size={size} onClick={addToBrowser} disabled={added}>
+      {added ? <Check strokeWidth={3} /> : <Plus strokeWidth={3} />}
+      {added ? `Added to ${BROWSER_LABEL[browser]}` : `Add to ${BROWSER_LABEL[browser]}`}
+    </Button>
+  );
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-background">
       <div className="pointer-events-none absolute inset-0 bg-dots" />
       <div className="pointer-events-none absolute inset-0 bg-glow" />
 
       <div className="relative mx-auto flex max-w-6xl flex-col px-6">
-        <nav className="flex items-center justify-between py-6">
+        <nav className="flex items-center justify-between gap-4 py-6">
           <span className="flex items-center gap-2 font-display text-lg font-extrabold">
             <img src={icon.url} alt="" className="size-7" />
             Pocket Coins
           </span>
-          <span className="rounded-full border border-border px-3 py-1 font-mono text-xs text-muted-foreground">
-            v{EXTENSION.version}
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="hidden rounded-full border border-border px-3 py-1 font-mono text-xs text-muted-foreground sm:inline">
+              v{EXTENSION.version}
+            </span>
+            <AddButton size="default" />
+          </div>
         </nav>
 
-        <section className="grid items-center gap-16 py-16 lg:grid-cols-[1.1fr_1fr] lg:py-24">
-          <div>
+        <section className="grid items-start gap-12 py-10 lg:grid-cols-[1fr_400px] lg:py-16">
+          <div className="lg:pt-10">
             <div className="mb-8 [perspective:600px]">
               <img
                 src={icon.url}
                 alt="Pocket Coins coin"
-                className="size-24 animate-coin-spin drop-shadow-[0_12px_30px_var(--gold)]"
+                className="size-20 animate-coin-spin drop-shadow-[0_12px_30px_var(--gold)]"
               />
             </div>
-            <h1 className="font-display text-6xl leading-[0.95] font-extrabold tracking-tight sm:text-7xl">
+            <h1 className="font-display text-5xl leading-[0.95] font-extrabold tracking-tight sm:text-7xl">
               la peaceeeeeeee,
               <br />
               <span className="text-gold">Why is Anjou lowkey tuff?</span>
             </h1>
             <p className="mt-6 max-w-md text-lg text-muted-foreground">
-              Flip pretend coins, see who's online, and send them a duel — Walls, Connect 4,
-              Reaction or Rock Paper Scissors.
+              Play right here — flip coins, see who's online and send them a duel. Add it to your
+              browser to play from any tab. Same coins either way.
             </p>
 
-            <div className="mt-10 flex flex-wrap items-center gap-5">
-              <Button variant="coin" size="xl" onClick={addToBrowser}>
-                <Plus strokeWidth={3} />
-                Add to {BROWSER_LABEL[browser]}
-              </Button>
-              <p className="text-sm text-muted-foreground">
-                Free · No account
-                <br />
-                Chrome, Edge, Brave & Firefox
-              </p>
+            <div className="mt-8 flex flex-col gap-4">
+              <div className="flex flex-wrap items-center gap-5">
+                <AddButton />
+                <p className="text-sm text-muted-foreground">
+                  Free · No account
+                  <br />
+                  Chrome, Edge, Brave & Firefox
+                </p>
+              </div>
+              <SyncStatus link={link} />
             </div>
           </div>
 
-          <div className="relative flex justify-center">
-            <img
-              src={icon.url}
-              alt=""
-              width={56}
-              height={56}
-              className="absolute -top-6 right-6 hidden size-14 animate-float [--tilt:12deg] sm:block"
-            />
-            <div className="absolute bottom-4 -left-2 hidden animate-float text-4xl [--tilt:-18deg] [animation-delay:1.5s] sm:block">
-              🎲
-            </div>
-            <div className="rotate-2 transition-transform duration-300 hover:rotate-0">
-              <PopupPreview />
-              <p className="mt-3 text-center font-mono text-xs text-muted-foreground">
-                ↑ try it — it's the real thing
-              </p>
-            </div>
+          <div className="flex justify-center lg:justify-end">
+            <WebGame onLink={onLink} />
           </div>
         </section>
 
         <h2 className="mb-6 font-display text-3xl font-extrabold tracking-tight">
           Duel anyone who's online
         </h2>
+        <p className="-mt-3 mb-6 text-muted-foreground">
+          Website and extension players share one lobby, so you can duel either.
+        </p>
         <section className="grid gap-4 pb-24 sm:grid-cols-2 lg:grid-cols-4">
           {FEATURES.map((f) => (
             <div
@@ -135,12 +154,12 @@ function Index() {
 
         <section className="mb-20 flex flex-col items-center gap-6 rounded-3xl border border-border bg-card px-6 py-14 text-center">
           <h2 className="font-display text-4xl font-extrabold tracking-tight">
-            Ready to flip?
+            Want it in every tab?
           </h2>
-          <Button variant="coin" size="xl" onClick={addToBrowser}>
-            <Plus strokeWidth={3} />
-            Add to {BROWSER_LABEL[browser]}
-          </Button>
+          <p className="max-w-md text-muted-foreground">
+            Add Pocket Coins to your browser. Your coins and name sync with this page.
+          </p>
+          <AddButton />
         </section>
 
         <footer className="pb-10 text-center text-xs text-muted-foreground">
