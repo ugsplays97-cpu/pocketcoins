@@ -99,12 +99,14 @@
 
   // Tell the page around the game (if any) how tall the game is and whether it's linked.
   if (window.parent !== window) {
-    const post = (msg) => window.parent.postMessage({ source: "pc-game", ...msg }, location.origin);
+    // Only size/mode info (nothing private), so any host page may read it: the website
+    // or the extension's popup, which lives on the extension's own origin.
+    const post = (msg) => window.parent.postMessage({ source: "pc-game", ...msg }, "*");
     store.ready.then((mode) => post({ op: "mode", mode }));
     const size = () => post({ op: "size", height: Math.ceil(document.body.getBoundingClientRect().height) });
     // The page can ask again (e.g. if it loaded after the game).
     window.addEventListener("message", (e) => {
-      if (e.source !== window.parent || e.origin !== location.origin || !e.data || e.data.source !== "pc-host") return;
+      if (e.source !== window.parent || !e.data || e.data.source !== "pc-host") return;
       store.ready.then((mode) => post({ op: "mode", mode }));
       size();
     });
