@@ -10,7 +10,7 @@
   if (IS_WEB) document.body.classList.add("web");
   // Opened inside the extension's popup (live copy from the website).
   const IN_EXT = IS_WEB && new URLSearchParams(location.search).has("ext") && window.parent !== window;
-  if (IN_EXT) document.body.classList.add("ext");
+  if (IN_EXT && !IS_WIN) document.body.classList.add("ext");
 
   const rid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
   const VIEWS = ["home", "setup", "waiting", "duel", "over", "ownerGate", "owner"];
