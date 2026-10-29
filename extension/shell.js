@@ -27,8 +27,13 @@
     }
   });
 
-  frame.onload = () => frame.contentWindow.postMessage({ source: "pc-host", op: "ping" }, src.origin);
+  // The live game answers right after it loads. If the page loaded but stays quiet
+  // (an error page, a blocked page, or an older version of the site), switch fast.
+  frame.onload = () => {
+    try { frame.contentWindow.postMessage({ source: "pc-host", op: "ping" }, src.origin); } catch {}
+    setTimeout(() => { if (!alive) fallback(); }, 1200);
+  };
   frame.src = src.href;
-  // Offline, or the website doesn't answer: use the bundled game.
-  setTimeout(() => { if (!alive) fallback(); }, 4000);
+  // Offline, or the website is slow: use the bundled game.
+  setTimeout(() => { if (!alive) fallback(); }, 3000);
 })();
