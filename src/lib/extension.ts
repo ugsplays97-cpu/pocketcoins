@@ -1,11 +1,10 @@
-import extensionFile from "@/assets/pocket-coins-1.4.0.zip.asset.json";
-
 export type BrowserKind = "chrome" | "edge" | "brave" | "opera" | "firefox" | "other";
 
 export const EXTENSION = {
   name: "Pocket Coins",
   version: "1.4.0",
-  fileUrl: extensionFile.url,
+  // Served from public/ so it downloads on any host (Lovable, Netlify, custom domains).
+  fileUrl: "/pocket-coins.zip",
   fileName: "pocket-coins.zip",
   /**
    * Store listings. When a link is set, "Add to browser" sends visitors straight
