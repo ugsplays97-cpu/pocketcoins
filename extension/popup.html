@@ -3,153 +3,21 @@
 <head>
   <meta charset="utf-8">
   <title>Pocket Coins</title>
-  <link rel="stylesheet" href="popup.css">
+  <style>
+    html, body { margin: 0; background: #12141c; }
+    body { width: 360px; min-height: 500px; }
+    body.win { width: auto; }
+    iframe { display: block; width: 100%; height: 500px; border: 0; }
+    body.win iframe { height: 100vh; }
+    #wait { position: fixed; inset: 0; display: grid; place-items: center; }
+    #wait i { width: 36px; height: 36px; border-radius: 50%; border: 4px solid #232738; border-top-color: #ffd24a; animation: r .9s linear infinite; }
+    @keyframes r { to { transform: rotate(360deg); } }
+  </style>
 </head>
 <body>
-<header class="top">
-  <div class="brand"><img id="brandLogo" src="icon.png" alt=""><span>Pocket Coins</span></div>
-  <div class="top-right">
-    <div class="bal" title="Your coins"><span class="dot"></span><b id="bal">0</b></div>
-    <button id="popout" class="icon-btn" title="Open in its own window">⧉</button>
-  </div>
-</header>
-
-<div id="notice" class="notice" hidden></div>
-<div id="invites" class="invites"></div>
-
-<main id="home">
-  <nav class="tabs">
-    <button data-tab="flip" class="on">Flip</button>
-    <button data-tab="players">Players <span id="onlineCount" class="count">0</span></button>
-  </nav>
-
-  <section id="flip" class="panel">
-    <div class="coin-stage"><img id="flipCoin" class="coin" src="icon.png" alt=""></div>
-    <div class="field">
-      <span class="label">Bet</span>
-      <div class="bet-row">
-        <input id="bet" type="number" min="1" value="10">
-        <button class="chip" data-bet="half">½</button>
-        <button class="chip" data-bet="double">2×</button>
-        <button class="chip" data-bet="max">Max</button>
-      </div>
-    </div>
-    <div class="field">
-      <div class="field-head"><span class="label">Win chance</span><b id="chanceTxt">50%</b></div>
-      <input id="chance" type="range" min="1" max="50" value="50">
-    </div>
-    <div class="payout"><span>Payout</span><b id="mult">×2.00</b></div>
-    <span id="luckBadge" class="lucky" hidden></span>
-    <button id="spin" class="btn-gold">Flip</button>
-    <p id="flipResult" class="result"></p>
-    <button id="bonus" class="btn-ghost" hidden>Out of coins? Claim 50</button>
-  </section>
-
-  <section id="players" class="panel" hidden>
-    <label class="field">
-      <span class="label">Your name</span>
-      <input id="name" maxlength="16" placeholder="Player">
-    </label>
-    <div id="plist" class="plist"></div>
-    <p id="pStatus" class="muted small"></p>
-  </section>
-</main>
-
-<section id="setup" class="panel" hidden>
-  <div class="row-head"><button id="setupBack" class="link">← Back</button><span>Duel <b id="setupFoe"></b></span></div>
-  <div id="gamePick" class="game-grid"></div>
-  <div class="field">
-    <span class="label">Bet</span>
-    <input id="duelBet" type="number" min="1" value="10">
-  </div>
-  <p id="setupStatus" class="muted small"></p>
-  <button id="sendInvite" class="btn-gold">Send duel</button>
-</section>
-
-<section id="waiting" class="panel center" hidden>
-  <div class="spinner"></div>
-  <p>Waiting for <b id="waitFoe"></b>…</p>
-  <button id="cancelInvite" class="btn-ghost">Cancel</button>
-</section>
-
-<section id="duel" class="panel" hidden>
-  <div class="duel-head">
-    <div><span id="duelGame"></span> <span class="muted">vs</span> <b id="duelFoe"></b></div>
-    <div class="pot"><span class="dot"></span><b id="duelBetTxt"></b></div>
-  </div>
-  <div id="stage" class="stage"></div>
-  <p id="duelStatus" class="status"></p>
-  <button id="forfeit" class="link danger">Give up</button>
-</section>
-
-<section id="over" class="panel center" hidden>
-  <div id="overEmoji" class="big-emoji"></div>
-  <h2 id="overTitle"></h2>
-  <p id="overText" class="muted"></p>
-  <button id="overBack" class="btn-gold">Back to players</button>
-</section>
-
-<section id="ownerGate" class="panel center" hidden>
-  <div class="lock-emoji">🔐</div>
-  <h2 class="o-title">Owner access</h2>
-  <form id="ownerForm" class="gate-form">
-    <input id="ownerPass" type="password" placeholder="Password" autocomplete="off">
-    <p id="ownerErr" class="lose-txt small" hidden>Wrong password</p>
-    <button class="btn-gold" type="submit">Unlock</button>
-  </form>
-  <button id="ownerCancel" class="link">Cancel</button>
-</section>
-
-<section id="owner" class="panel" hidden>
-  <div class="row-head"><span class="o-title">👑 Owner panel</span><button id="ownerClose" class="link">Done</button></div>
-
-  <div class="o-card">
-    <div class="field-head"><span class="label">Coins</span><b id="oBal" class="gold">0</b></div>
-    <input id="oAmount" type="number" min="0" value="1000">
-    <div class="o-row">
-      <button class="chip" data-amt="1000">1K</button>
-      <button class="chip" data-amt="100000">100K</button>
-      <button class="chip" data-amt="1000000">1M</button>
-      <button class="chip" data-amt="1000000000">1B</button>
-    </div>
-    <div class="o-row">
-      <button id="oGive" class="btn-gold sm">Give</button>
-      <button id="oTake" class="btn-ghost sm">Take</button>
-      <button id="oSet" class="btn-ghost sm">Set</button>
-    </div>
-  </div>
-
-  <div class="o-card">
-    <div class="field-head"><span class="label">Luck</span><b id="oLuckTxt" class="gold">Normal</b></div>
-    <input id="oLuck" type="range" min="0" max="100" value="0">
-    <p class="muted small">Boosts your flip odds (100% = every flip wins) and gives the same chance to keep your coins when you lose a duel.</p>
-  </div>
-
-  <div class="o-card">
-    <div class="field-head"><span class="label">Players' luck</span><b id="oPLuckTxt" class="gold">Normal</b></div>
-    <select id="oTarget"></select>
-    <input id="oPLuck" type="range" min="-100" max="100" value="0">
-    <button id="oSendLuck" class="btn-gold sm">Set their luck</button>
-    <p id="oPStatus" class="muted small">Above 0 helps them win flips and keep coins in duels. Below 0 makes their flips lose more.</p>
-  </div>
-
-  <div class="o-card">
-    <label class="toggle"><span><b>Never lose coins</b><small>Losing flips and duels costs nothing</small></span><input id="oShield" type="checkbox"><i></i></label>
-    <label class="toggle"><span><b>Up to 99% win chance</b><small>Unlocks the full win-chance slider</small></span><input id="oChance" type="checkbox"><i></i></label>
-    <label class="toggle"><span><b>Owner crown</b><small>Shows 👑 next to your name for players online</small></span><input id="oCrown" type="checkbox"><i></i></label>
-  </div>
-
-  <div class="o-row">
-    <button id="oReset" class="btn-ghost sm">Reset to 100</button>
-    <button id="oLock" class="btn-ghost sm danger">Lock panel</button>
-  </div>
-</section>
-
-<script src="supabase.js"></script>
-<script src="config.js"></script>
-<script src="store.js"></script>
-<script src="rules.js"></script>
-<script src="games.js"></script>
-<script src="app.js"></script>
+  <div id="wait"><i></i></div>
+  <iframe id="game" title="Pocket Coins" allow="clipboard-write"></iframe>
+  <script src="config.js"></script>
+  <script src="shell.js"></script>
 </body>
 </html>

@@ -26,6 +26,7 @@ body {
 body.win { width: auto; }
 body.web { min-height: 0; padding-bottom: 8px; }
 body.web #popout { display: none; }
+body.web.ext #popout { display: grid; }
 .lucky { align-self: center; font-size: 12px; font-weight: 800; color: var(--green); background: rgba(74, 222, 128, .12); padding: 3px 10px; border-radius: 999px; }
 #bonus:disabled { opacity: .6; cursor: default; }
 [hidden] { display: none !important; }
