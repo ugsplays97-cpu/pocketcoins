@@ -151,7 +151,7 @@
   };
   $("ownerCancel").onclick = () => show("home");
 
-  function saveOwner() { store.set({ owner }); applyOwner(); track(); }
+  function saveOwner() { store.set({ owner }); applyOwner(); track(); submitScore(); }
   function applyOwner() {
     const ch = $("chance");
     ch.max = owner.wide ? 99 : 50;
@@ -175,21 +175,44 @@
       ? ids.map((id) => `<option value="${esc(id)}">${esc(online[id].name)} · luck ${luckLabel(online[id].luck)}</option>`).join("")
       : `<option value="">Nobody else is online</option>`;
     if (cur && online[cur]) sel.value = cur;
-    sel.disabled = $("oSendLuck").disabled = !ids.length;
+    sel.disabled = $("oSendLuck").disabled = $("oResetLuck").disabled = $("oResetAll").disabled = !ids.length;
     if (!sel.dataset.touched && sel.value && online[sel.value]) setPLuck(online[sel.value].luck);
   }
   function setPLuck(n) { $("oPLuck").value = n; $("oPLuckTxt").textContent = luckLabel(+n); }
   $("oTarget").onchange = () => { $("oTarget").dataset.touched = ""; delete $("oTarget").dataset.touched; const p = online[$("oTarget").value]; if (p) setPLuck(p.luck); };
   $("oPLuck").oninput = () => { $("oTarget").dataset.touched = "1"; setPLuck($("oPLuck").value); };
+  function giveLuck(id, n) {
+    send(id, { t: "luck", luck: n });
+    online[id].luck = n;
+  }
   $("oSendLuck").onclick = () => {
     const id = $("oTarget").value, p = online[id];
     if (!p) { $("oPStatus").textContent = "That player just went offline."; return; }
     const n = clampLuck($("oPLuck").value);
-    send(id, { t: "luck", luck: n });
-    p.luck = n;
+    giveLuck(id, n);
     delete $("oTarget").dataset.touched;
     renderTargets();
     $("oPStatus").innerHTML = `<span class="win-txt">${esc(p.name)}'s luck is now ${luckLabel(n)}.</span>`;
+  };
+  // Undo luck an owner panel gave someone (back to normal odds).
+  $("oResetLuck").onclick = () => {
+    const id = $("oTarget").value, p = online[id];
+    if (!p) { $("oPStatus").textContent = "That player just went offline."; return; }
+    giveLuck(id, 0);
+    delete $("oTarget").dataset.touched;
+    renderTargets();
+    setPLuck(0);
+    $("oPStatus").innerHTML = `<span class="win-txt">${esc(p.name)}'s luck is back to normal.</span>`;
+  };
+  $("oResetAll").onclick = () => {
+    const ids = Object.keys(online).filter((id) => online[id].luck !== 0);
+    ids.forEach((id) => giveLuck(id, 0));
+    delete $("oTarget").dataset.touched;
+    renderTargets();
+    setPLuck(0);
+    $("oPStatus").innerHTML = ids.length
+      ? `<span class="win-txt">Luck reset to normal for ${ids.length} player${ids.length > 1 ? "s" : ""}.</span>`
+      : "Nobody online has changed luck right now.";
   };
   const oAmt = () => Math.max(0, Math.floor(+$("oAmount").value) || 0);
   const ownerCoins = (n) => { setCoins(n); $("oBal").textContent = coins.toLocaleString(); };
