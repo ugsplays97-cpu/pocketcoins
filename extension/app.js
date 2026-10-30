@@ -556,6 +556,7 @@
     e.target.value = me.name;
     store.set({ name: me.name });
     track();
+    submitScore();
   };
   $("popout").onclick = () => {
     if (IN_EXT) return window.parent.postMessage({ source: "pc-game", op: "popout" }, "*");
@@ -564,12 +565,14 @@
   };
 
   // ---------- boot ----------
-  Promise.resolve(store.get(["coins", "name", "pid", "activeDuel", "owner", "luck", "bonusAt"])).then((d) => {
+  Promise.resolve(store.get(["coins", "name", "pid", "activeDuel", "owner", "luck", "bonusAt"])).then(async (d) => {
     d = d || {};
     coins = typeof d.coins === "number" ? d.coins : 100;
-    me.id = d.pid || rid();
+    // pid stays private (it proves who owns a leaderboard row); others only see its hash.
+    const pid = d.pid || rid();
+    try { me.secret = pid; me.id = await sha256(pid); } catch { me.secret = ""; me.id = pid; }
     me.name = d.name || "Player" + Math.floor(100 + Math.random() * 900);
-    store.set({ pid: me.id, name: me.name });
+    store.set({ pid, name: me.name });
     $("name").value = me.name;
     if (d.owner && typeof d.owner === "object") owner = { ...owner, ...d.owner };
     given = clampLuck(d.luck);
