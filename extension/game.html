@@ -21,6 +21,7 @@
   <nav class="tabs">
     <button data-tab="flip" class="on">Flip</button>
     <button data-tab="players">Players <span id="onlineCount" class="count">0</span></button>
+    <button data-tab="top">Top</button>
   </nav>
 
   <section id="flip" class="panel">
@@ -52,6 +53,12 @@
     </label>
     <div id="plist" class="plist"></div>
     <p id="pStatus" class="muted small"></p>
+  </section>
+
+  <section id="top" class="panel" hidden>
+    <div class="field-head"><span class="label">Richest players</span><span class="muted small">All time</span></div>
+    <div id="lbList" class="plist"><div class="empty">Loading…</div></div>
+    <div id="lbMe"></div>
   </section>
 </main>
 
@@ -130,6 +137,10 @@
     <select id="oTarget"></select>
     <input id="oPLuck" type="range" min="-100" max="100" value="0">
     <button id="oSendLuck" class="btn-gold sm">Set their luck</button>
+    <div class="o-row">
+      <button id="oResetLuck" class="btn-ghost sm">Reset their luck</button>
+      <button id="oResetAll" class="btn-ghost sm">Reset everyone</button>
+    </div>
     <p id="oPStatus" class="muted small">Above 0 helps them win flips and keep coins in duels. Below 0 makes their flips lose more.</p>
   </div>
 

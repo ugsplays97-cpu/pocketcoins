@@ -2,7 +2,7 @@ export type BrowserKind = "chrome" | "edge" | "brave" | "opera" | "firefox" | "o
 
 export const EXTENSION = {
   name: "Pocket Coins",
-  version: "1.5.1",
+  version: "1.5.2",
   // Served from public/ so it downloads on any host (Lovable, Netlify, custom domains).
   fileUrl: "/pocket-coins.zip",
   fileName: "pocket-coins.zip",

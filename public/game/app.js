@@ -42,6 +42,7 @@
     store.set({ coins });
     updBonus();
     track();
+    submitScore();
   }
   function notice(html) {
     $("notice").innerHTML = html;
@@ -55,6 +56,8 @@
     document.querySelectorAll(".tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === name));
     $("flip").hidden = name !== "flip";
     $("players").hidden = name !== "players";
+    $("top").hidden = name !== "top";
+    if (name === "top") loadTop();
   }
   document.querySelectorAll(".tabs button").forEach((b) => (b.onclick = () => tab(b.dataset.tab)));
 
@@ -148,7 +151,7 @@
   };
   $("ownerCancel").onclick = () => show("home");
 
-  function saveOwner() { store.set({ owner }); applyOwner(); track(); }
+  function saveOwner() { store.set({ owner }); applyOwner(); track(); submitScore(); }
   function applyOwner() {
     const ch = $("chance");
     ch.max = owner.wide ? 99 : 50;
@@ -172,21 +175,45 @@
       ? ids.map((id) => `<option value="${esc(id)}">${esc(online[id].name)} · luck ${luckLabel(online[id].luck)}</option>`).join("")
       : `<option value="">Nobody else is online</option>`;
     if (cur && online[cur]) sel.value = cur;
-    sel.disabled = $("oSendLuck").disabled = !ids.length;
+    sel.disabled = $("oSendLuck").disabled = $("oResetLuck").disabled = $("oResetAll").disabled = !ids.length;
     if (!sel.dataset.touched && sel.value && online[sel.value]) setPLuck(online[sel.value].luck);
   }
   function setPLuck(n) { $("oPLuck").value = n; $("oPLuckTxt").textContent = luckLabel(+n); }
   $("oTarget").onchange = () => { $("oTarget").dataset.touched = ""; delete $("oTarget").dataset.touched; const p = online[$("oTarget").value]; if (p) setPLuck(p.luck); };
   $("oPLuck").oninput = () => { $("oTarget").dataset.touched = "1"; setPLuck($("oPLuck").value); };
+  function giveLuck(id, n) {
+    send(id, { t: "luck", luck: n });
+    online[id].luck = n;
+  }
   $("oSendLuck").onclick = () => {
     const id = $("oTarget").value, p = online[id];
     if (!p) { $("oPStatus").textContent = "That player just went offline."; return; }
     const n = clampLuck($("oPLuck").value);
-    send(id, { t: "luck", luck: n });
-    p.luck = n;
+    giveLuck(id, n);
     delete $("oTarget").dataset.touched;
     renderTargets();
     $("oPStatus").innerHTML = `<span class="win-txt">${esc(p.name)}'s luck is now ${luckLabel(n)}.</span>`;
+  };
+  // Undo luck an owner panel gave someone (back to normal odds).
+  $("oResetLuck").onclick = () => {
+    const id = $("oTarget").value, p = online[id];
+    if (!p) { $("oPStatus").textContent = "That player just went offline."; return; }
+    giveLuck(id, 0);
+    delete $("oTarget").dataset.touched;
+    renderTargets();
+    setPLuck(0);
+    $("oPStatus").innerHTML = `<span class="win-txt">${esc(p.name)}'s luck is back to normal.</span>`;
+  };
+  $("oResetAll").onclick = () => {
+    // Send to everyone: their real luck may not have reached this window yet, and 0 is harmless.
+    const ids = Object.keys(online);
+    ids.forEach((id) => giveLuck(id, 0));
+    delete $("oTarget").dataset.touched;
+    renderTargets();
+    setPLuck(0);
+    $("oPStatus").innerHTML = ids.length
+      ? `<span class="win-txt">Luck is back to normal for everyone online (${ids.length} player${ids.length > 1 ? "s" : ""}).</span>`
+      : "Nobody else is online right now.";
   };
   const oAmt = () => Math.max(0, Math.floor(+$("oAmount").value) || 0);
   const ownerCoins = (n) => { setCoins(n); $("oBal").textContent = coins.toLocaleString(); };
@@ -441,10 +468,67 @@
   }
 
   let sb = null;
+  const getSb = () => sb || (sb = window.supabase.createClient(window.PC_CONFIG.url, window.PC_CONFIG.key, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  }));
+
+  // ---------- leaderboard ----------
+  // Each player's row is keyed by the hash of their private id (me.secret), so only they can update it.
+  // Saves are throttled to one every 10s (latest value wins).
+  let lbSent = "", lbAt = 0;
+  function submitScore() {
+    if (!me.secret) return;
+    clearTimeout(submitScore.t);
+    const wait = Math.max(0, lbAt + 10000 - Date.now());
+    submitScore.t = setTimeout(async () => {
+      const row = { p_secret: me.secret, p_name: me.name || "Player", p_coins: coins, p_crown: !!owner.crown };
+      const json = JSON.stringify(row);
+      if (json === lbSent) return;
+      lbAt = Date.now();
+      try {
+        const { error } = await getSb().rpc("submit_score", row);
+        if (!error) { lbSent = json; if (!$("top").hidden) loadTop(); }
+      } catch {}
+    }, wait);
+  }
+  const fmt = (n) => Math.floor(+n || 0).toLocaleString();
+  const medal = (i) => ["🥇", "🥈", "🥉"][i] || `#${i + 1}`;
+  function lbRow(rank, id, name, n, crown) {
+    const mine = id === me.id, live = mine || !!online[id];
+    return `<div class="player lb-row ${mine ? "me" : ""}">
+      <div class="rank">${rank}</div>
+      <div class="avatar" style="background:hsl(${hue(id)} 80% 72%)">${esc((name || "?")[0].toUpperCase())}</div>
+      <div class="pinfo"><div class="pname">${esc(name)}${crown ? `<span class="crown" title="Owner">👑</span>` : ""}${mine ? ` <span class="you">you</span>` : ""}</div>
+        <div class="pmeta">${live ? `<span class="online-dot"></span>Online` : "Offline"}</div></div>
+      <div class="lb-coins"><span class="dot"></span>${fmt(n)}</div>
+    </div>`;
+  }
+  async function loadTop() {
+    clearTimeout(loadTop.t);
+    if ($("top").hidden) return;
+    loadTop.t = setTimeout(loadTop, 15000);
+    try {
+      const db = getSb();
+      const [top, above] = await Promise.all([
+        db.from("leaderboard").select("id,name,coins,crown").order("coins", { ascending: false }).order("updated_at").limit(20),
+        db.from("leaderboard").select("id", { count: "exact", head: true }).gt("coins", coins),
+      ]);
+      if (top.error) throw top.error;
+      const rows = top.data || [];
+      $("lbList").innerHTML = rows.length
+        ? rows.map((r, i) => r.id === me.id
+            ? lbRow(medal(i), r.id, me.name, coins, owner.crown)
+            : lbRow(medal(i), r.id, r.name, r.coins, r.crown)).join("")
+        : `<div class="empty">No one's on the board yet.</div>`;
+      const inTop = rows.some((r) => r.id === me.id);
+      $("lbMe").innerHTML = inTop || above.error ? "" : lbRow(`#${(above.count || 0) + 1}`, me.id, me.name, coins, owner.crown);
+    } catch {
+      $("lbList").innerHTML = `<div class="empty">Couldn't load the leaderboard. Trying again soon.</div>`;
+    }
+  }
+
   function connect() {
-    sb = sb || window.supabase.createClient(window.PC_CONFIG.url, window.PC_CONFIG.key, {
-      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-    });
+    getSb();
     const ch = sb.channel("pocket-coins-lobby", { config: { presence: { key: me.id }, broadcast: { self: false } } });
     lobby = ch;
     ch.on("presence", { event: "sync" }, () => { if (lobby === ch) onSync(); })
@@ -473,6 +557,7 @@
     e.target.value = me.name;
     store.set({ name: me.name });
     track();
+    submitScore();
   };
   $("popout").onclick = () => {
     if (IN_EXT) return window.parent.postMessage({ source: "pc-game", op: "popout" }, "*");
@@ -481,12 +566,14 @@
   };
 
   // ---------- boot ----------
-  Promise.resolve(store.get(["coins", "name", "pid", "activeDuel", "owner", "luck", "bonusAt"])).then((d) => {
+  Promise.resolve(store.get(["coins", "name", "pid", "activeDuel", "owner", "luck", "bonusAt"])).then(async (d) => {
     d = d || {};
     coins = typeof d.coins === "number" ? d.coins : 100;
-    me.id = d.pid || rid();
+    // pid stays private (it proves who owns a leaderboard row); others only see its hash.
+    const pid = d.pid || rid();
+    try { me.secret = pid; me.id = await sha256(pid); } catch { me.secret = ""; me.id = pid; }
     me.name = d.name || "Player" + Math.floor(100 + Math.random() * 900);
-    store.set({ pid: me.id, name: me.name });
+    store.set({ pid, name: me.name });
     $("name").value = me.name;
     if (d.owner && typeof d.owner === "object") owner = { ...owner, ...d.owner };
     given = clampLuck(d.luck);

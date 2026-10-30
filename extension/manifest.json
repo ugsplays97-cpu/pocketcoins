@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Pocket Coins",
-  "version": "1.5.1",
+  "version": "1.5.2",
   "description": "A tiny side game: flip pretend coins and duel real players online in Walls, Connect 4, Reaction and Rock Paper Scissors.",
   "permissions": [
     "storage"
