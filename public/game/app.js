@@ -205,14 +205,15 @@
     $("oPStatus").innerHTML = `<span class="win-txt">${esc(p.name)}'s luck is back to normal.</span>`;
   };
   $("oResetAll").onclick = () => {
-    const ids = Object.keys(online).filter((id) => online[id].luck !== 0);
+    // Send to everyone: their real luck may not have reached this window yet, and 0 is harmless.
+    const ids = Object.keys(online);
     ids.forEach((id) => giveLuck(id, 0));
     delete $("oTarget").dataset.touched;
     renderTargets();
     setPLuck(0);
     $("oPStatus").innerHTML = ids.length
-      ? `<span class="win-txt">Luck reset to normal for ${ids.length} player${ids.length > 1 ? "s" : ""}.</span>`
-      : "Nobody online has changed luck right now.";
+      ? `<span class="win-txt">Luck is back to normal for everyone online (${ids.length} player${ids.length > 1 ? "s" : ""}).</span>`
+      : "Nobody else is online right now.";
   };
   const oAmt = () => Math.max(0, Math.floor(+$("oAmount").value) || 0);
   const ownerCoins = (n) => { setCoins(n); $("oBal").textContent = coins.toLocaleString(); };
