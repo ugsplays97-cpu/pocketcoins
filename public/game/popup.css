@@ -220,3 +220,12 @@ body.win #popout { display: none; }
 .toggle input:checked + i { background: var(--gold-deep); }
 .toggle input:checked + i::after { transform: translateX(16px); background: var(--gold); }
 .crown { margin-left: 4px; }
+
+/* leaderboard */
+.lb-row .rank { width: 26px; text-align: center; font-weight: 800; font-size: 13px; color: var(--muted); flex-shrink: 0; }
+.lb-row:nth-child(-n+3) .rank { font-size: 18px; }
+.lb-row.me { outline: 1.5px solid var(--gold); }
+.lb-coins { display: flex; align-items: center; gap: 6px; font-weight: 800; color: var(--gold); font-variant-numeric: tabular-nums; }
+.you { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; padding: 1px 6px; border-radius: 999px; background: var(--gold); color: #1a1407; vertical-align: middle; }
+#lbMe:not(:empty) { margin-top: 2px; padding-top: 8px; border-top: 1px dashed var(--line); }
+#lbMe .lb-row:nth-child(-n+3) .rank { font-size: 13px; }
