@@ -467,10 +467,67 @@
   }
 
   let sb = null;
+  const getSb = () => sb || (sb = window.supabase.createClient(window.PC_CONFIG.url, window.PC_CONFIG.key, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  }));
+
+  // ---------- leaderboard ----------
+  // Each player's row is keyed by the hash of their private id (me.secret), so only they can update it.
+  // Saves are throttled to one every 10s (latest value wins).
+  let lbSent = "", lbAt = 0;
+  function submitScore() {
+    if (!me.secret) return;
+    clearTimeout(submitScore.t);
+    const wait = Math.max(0, lbAt + 10000 - Date.now());
+    submitScore.t = setTimeout(async () => {
+      const row = { p_secret: me.secret, p_name: me.name || "Player", p_coins: coins, p_crown: !!owner.crown };
+      const json = JSON.stringify(row);
+      if (json === lbSent) return;
+      lbAt = Date.now();
+      try {
+        const { error } = await getSb().rpc("submit_score", row);
+        if (!error) { lbSent = json; if (!$("top").hidden) loadTop(); }
+      } catch {}
+    }, wait);
+  }
+  const fmt = (n) => Math.floor(+n || 0).toLocaleString();
+  const medal = (i) => ["🥇", "🥈", "🥉"][i] || `#${i + 1}`;
+  function lbRow(rank, id, name, n, crown) {
+    const mine = id === me.id, live = mine || !!online[id];
+    return `<div class="player lb-row ${mine ? "me" : ""}">
+      <div class="rank">${rank}</div>
+      <div class="avatar" style="background:hsl(${hue(id)} 80% 72%)">${esc((name || "?")[0].toUpperCase())}</div>
+      <div class="pinfo"><div class="pname">${esc(name)}${crown ? `<span class="crown" title="Owner">👑</span>` : ""}${mine ? ` <span class="you">you</span>` : ""}</div>
+        <div class="pmeta">${live ? `<span class="online-dot"></span>Online` : "Offline"}</div></div>
+      <div class="lb-coins"><span class="dot"></span>${fmt(n)}</div>
+    </div>`;
+  }
+  async function loadTop() {
+    clearTimeout(loadTop.t);
+    if ($("top").hidden) return;
+    loadTop.t = setTimeout(loadTop, 15000);
+    try {
+      const db = getSb();
+      const [top, above] = await Promise.all([
+        db.from("leaderboard").select("id,name,coins,crown").order("coins", { ascending: false }).order("updated_at").limit(20),
+        db.from("leaderboard").select("id", { count: "exact", head: true }).gt("coins", coins),
+      ]);
+      if (top.error) throw top.error;
+      const rows = top.data || [];
+      $("lbList").innerHTML = rows.length
+        ? rows.map((r, i) => r.id === me.id
+            ? lbRow(medal(i), r.id, me.name, coins, owner.crown)
+            : lbRow(medal(i), r.id, r.name, r.coins, r.crown)).join("")
+        : `<div class="empty">No one's on the board yet.</div>`;
+      const inTop = rows.some((r) => r.id === me.id);
+      $("lbMe").innerHTML = inTop || above.error ? "" : lbRow(`#${(above.count || 0) + 1}`, me.id, me.name, coins, owner.crown);
+    } catch {
+      $("lbList").innerHTML = `<div class="empty">Couldn't load the leaderboard. Trying again soon.</div>`;
+    }
+  }
+
   function connect() {
-    sb = sb || window.supabase.createClient(window.PC_CONFIG.url, window.PC_CONFIG.key, {
-      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-    });
+    getSb();
     const ch = sb.channel("pocket-coins-lobby", { config: { presence: { key: me.id }, broadcast: { self: false } } });
     lobby = ch;
     ch.on("presence", { event: "sync" }, () => { if (lobby === ch) onSync(); })
