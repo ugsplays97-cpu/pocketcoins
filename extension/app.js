@@ -42,6 +42,7 @@
     store.set({ coins });
     updBonus();
     track();
+    submitScore();
   }
   function notice(html) {
     $("notice").innerHTML = html;
@@ -55,6 +56,8 @@
     document.querySelectorAll(".tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === name));
     $("flip").hidden = name !== "flip";
     $("players").hidden = name !== "players";
+    $("top").hidden = name !== "top";
+    if (name === "top") loadTop();
   }
   document.querySelectorAll(".tabs button").forEach((b) => (b.onclick = () => tab(b.dataset.tab)));
 
