@@ -521,7 +521,11 @@
             : lbRow(medal(i), r.id, r.name, r.coins, r.crown)).join("")
         : `<div class="empty">No one's on the board yet.</div>`;
       const inTop = rows.some((r) => r.id === me.id);
-      $("lbMe").innerHTML = inTop || above.error ? "" : lbRow(`#${(above.count || 0) + 1}`, me.id, me.name, coins, owner.crown);
+      // Players still on the starting 100 coins aren't saved to the board until they play.
+      const fresh = coins === 100 && !owner.crown;
+      $("lbMe").innerHTML = inTop || above.error ? ""
+        : lbRow(`#${(above.count || 0) + 1}`, me.id, me.name, coins, owner.crown)
+          + (fresh ? `<p class="muted small">Play a flip or a duel to get on the board.</p>` : "");
     } catch {
       $("lbList").innerHTML = `<div class="empty">Couldn't load the leaderboard. Trying again soon.</div>`;
     }
