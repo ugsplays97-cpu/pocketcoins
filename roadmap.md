@@ -15,3 +15,4 @@
 - [ ] True one-click "Add to browser" — waiting on a Chrome Web Store / Firefox Add-ons listing from the user
 - [x] Extension screen shows fast even when the live site is old or unreachable
 - [ ] Vercel site: sync coins + live game updates there — waiting on the user's Vercel address
+- [x] Leaderboard ("Top" tab) + owner "reset their luck / reset everyone"
