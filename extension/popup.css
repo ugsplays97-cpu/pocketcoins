@@ -221,6 +221,12 @@ body.win #popout { display: none; }
 .toggle input:checked + i::after { transform: translateX(16px); background: var(--gold); }
 .crown { margin-left: 4px; }
 
+.pid-row { cursor: pointer; display: flex; align-items: center; gap: 4px; opacity: 0.6; transition: opacity 0.2s; margin-top: 1px; }
+.pid-row:hover { opacity: 1; color: var(--gold); }
+.pid-row.copied::after { content: "Copied!"; color: var(--green); margin-left: 4px; font-weight: bold; }
+.pid-row.copied .copy-hint { display: none; }
+.copy-hint { font-size: 10px; }
+
 /* leaderboard */
 .lb-row .rank { width: 26px; text-align: center; font-weight: 800; font-size: 13px; color: var(--muted); flex-shrink: 0; }
 .lb-row:nth-child(-n+3) .rank { font-size: 18px; }

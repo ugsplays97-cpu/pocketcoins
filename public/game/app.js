@@ -513,8 +513,13 @@
     return `<div class="player lb-row ${mine ? "me" : ""}">
       <div class="rank">${rank}</div>
       <div class="avatar" style="background:hsl(${hue(id)} 80% 72%)">${esc((name || "?")[0].toUpperCase())}</div>
-      <div class="pinfo"><div class="pname">${esc(name)}${crown ? `<span class="crown" title="Owner">👑</span>` : ""}${mine ? ` <span class="you">you</span>` : ""}</div>
-        <div class="pmeta">${live ? `<span class="online-dot"></span>Online` : "Offline"}</div></div>
+      <div class="pinfo">
+        <div class="pname">${esc(name)}${crown ? `<span class="crown" title="Owner">👑</span>` : ""}${mine ? ` <span class="you">you</span>` : ""}</div>
+        <div class="pid-row muted small" title="Click to copy ID" onclick="navigator.clipboard.writeText('${esc(id)}').then(() => this.classList.add('copied'), setTimeout(() => this.classList.remove('copied'), 2000))">
+          ID: ${esc(id.slice(0, 8))}… <span class="copy-hint">📋</span>
+        </div>
+        <div class="pmeta">${live ? `<span class="online-dot"></span>Online` : "Offline"}</div>
+      </div>
       <div class="lb-coins"><span class="dot"></span>${fmt(n)}</div>
     </div>`;
   }
