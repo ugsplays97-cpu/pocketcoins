@@ -97,6 +97,32 @@
 
   window.PC_STORE = store;
 
+// Simple client-side ban management for website version.
+window.PC_BAN = {
+  async ban(id) {
+    if (!id) return;
+    const cur = await PC_STORE.get(["banned"]);
+    const list = Array.isArray(cur.banned) ? cur.banned : [];
+    if (!list.includes(id)) {
+      list.push(id);
+      await PC_STORE.set({ banned: list });
+    }
+  },
+  async unban(id) {
+    if (!id) return;
+    const cur = await PC_STORE.get(["banned"]);
+    let list = Array.isArray(cur.banned) ? cur.banned : [];
+    list = list.filter((i) => i !== id);
+    await PC_STORE.set({ banned: list });
+  },
+  async isBanned(id) {
+    if (!id) return false;
+    const cur = await PC_STORE.get(["banned"]);
+    const list = Array.isArray(cur.banned) ? cur.banned : [];
+    return list.includes(id);
+  },
+};
+
   // Tell the page around the game (if any) how tall the game is and whether it's linked.
   if (window.parent !== window) {
     // Only size/mode info (nothing private), so any host page may read it: the website

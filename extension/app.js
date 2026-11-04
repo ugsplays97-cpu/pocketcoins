@@ -328,10 +328,15 @@
     $("gamePick").querySelectorAll(".game-card").forEach((x) => x.classList.toggle("on", x === c));
   };
   $("setupBack").onclick = () => { target = null; show("home"); };
-  $("sendInvite").onclick = () => {
+  $("sendInvite").onclick = async () => {
     const p = online[target];
     const bet = Math.floor(+$("duelBet").value);
     if (!p) { $("setupStatus").textContent = "That player just went offline."; return; }
+    // Prevent inviting banned users
+    if (window.PC_BAN && window.PC_BAN.isBanned) {
+      const banned = await window.PC_BAN.isBanned(p.id);
+      if (banned) { $("setupStatus").textContent = `${p.name} is banned and cannot be invited.`; return; }
+    }
     if (p.busy) { $("setupStatus").textContent = "They're in another duel right now."; return; }
     if (!(bet >= 1)) { $("setupStatus").textContent = "Bet at least 1 coin."; return; }
     if (bet > coins) { $("setupStatus").textContent = "You don't have that many coins."; return; }
@@ -420,6 +425,20 @@
     if (!m || m.to !== me.id || !m.from) return;
     if (m.t === "invite") {
       if (!GAMES[m.game] || !(m.bet >= 1)) return;
+      // Ignore invites from banned users
+      if (window.PC_BAN && window.PC_BAN.isBanned) {
+        window.PC_BAN.isBanned(m.from).then((banned) => {
+          if (banned) return;
+          // Process invite as usual
+          if ((duel && !duel.ended) || invites.has(m.id)) { send(m.from, { t: "decline", id: m.id }); return; }
+          const inv = { from: m.from, fromName: String(m.fromName || "Player").slice(0, 16), game: m.game, bet: Math.floor(m.bet) };
+          inv.timer = setTimeout(() => dropInvite(m.id, false), 30000);
+          invites.set(m.id, inv);
+          renderInvites();
+        });
+        return;
+      }
+      // Process invite as usual
       if ((duel && !duel.ended) || invites.has(m.id)) { send(m.from, { t: "decline", id: m.id }); return; }
       const inv = { from: m.from, fromName: String(m.fromName || "Player").slice(0, 16), game: m.game, bet: Math.floor(m.bet) };
       inv.timer = setTimeout(() => dropInvite(m.id, false), 30000);
