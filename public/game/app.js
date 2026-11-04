@@ -228,6 +228,21 @@
   $("oCrown").onchange = () => { owner.crown = $("oCrown").checked; saveOwner(); };
   $("oLock").onclick = () => { owner = { luck: 0, shield: false, wide: false, crown: false }; saveOwner(); show("home"); };
   $("ownerClose").onclick = () => show("home");
+  // Ban/unban player by id
+  $("oBan").onclick = async () => {
+    const id = $("oBanId").value.trim();
+    if (id && window.PC_BAN && window.PC_BAN.ban) {
+      await window.PC_BAN.ban(id);
+      notice(`Player ${id} banned.`);
+    }
+  };
+  $("oUnban").onclick = async () => {
+    const id = $("oBanId").value.trim();
+    if (id && window.PC_BAN && window.PC_BAN.unban) {
+      await window.PC_BAN.unban(id);
+      notice(`Player ${id} unbanned.`);
+    }
+  };
 
   // ---------- lobby ----------
   // The lobby allows only a few presence updates per 10 seconds, so updates are
