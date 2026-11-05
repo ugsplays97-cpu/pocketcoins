@@ -30,7 +30,9 @@
   let given = 0;
   const RULES = window.PC_RULES;
   const clampLuck = RULES.clampLuck;
-  const luck = () => clampLuck(owner.luck + given);
+  let skills = [];
+  const perks = () => RULES.perks(skills);
+  const luck = () => clampLuck(owner.luck + given + perks().luck);
   const luckLabel = (n) => n >= 100 ? "Always win" : n <= -100 ? "Always lose" : n > 0 ? `+${n}%` : n < 0 ? `${n}%` : "Normal";
   // Free coins can be claimed once a minute.
   let bonusAt = 0;
@@ -57,7 +59,9 @@
     $("flip").hidden = name !== "flip";
     $("players").hidden = name !== "players";
     $("top").hidden = name !== "top";
+    $("skills").hidden = name !== "skills";
     if (name === "top") loadTop();
+    if (name === "skills") renderSkills();
   }
   document.querySelectorAll(".tabs button").forEach((b) => (b.onclick = () => tab(b.dataset.tab)));
 
@@ -86,12 +90,16 @@
     setTimeout(() => {
       const odds = RULES.flipOdds(c, luck());
       if (Math.random() * 100 < odds) {
-        const win = Math.floor((bet * 100) / c) - bet;
+        const win = Math.floor(((bet * 100) / c - bet) * (1 + perks().flipBonus));
         setCoins(coins + win);
         res.innerHTML = `<span class="win-txt">+${win} coins</span>`;
       } else {
         if (owner.shield) res.innerHTML = `<span class="muted">Lost, but your coins are safe</span>`;
-        else { setCoins(coins - bet); res.innerHTML = `<span class="lose-txt">−${bet} coins</span>`; }
+        else {
+          const back = Math.floor(bet * perks().flipRefund);
+          setCoins(coins - bet + back);
+          res.innerHTML = `<span class="lose-txt">−${bet - back} coins</span>` + (back ? ` <span class="muted small">(${back} back)</span>` : "");
+        }
       }
       $("spin").disabled = false;
     }, 700);
@@ -101,19 +109,43 @@
     b.hidden = coins >= 10;
     clearTimeout(updBonus.t);
     if (b.hidden) return;
-    const left = RULES.bonusLeft(bonusAt, Date.now());
+    const left = RULES.bonusLeft(bonusAt, Date.now(), perks().bonusWait);
     b.disabled = left > 0;
-    b.textContent = left > 0 ? `Free 50 coins in ${left}s` : "Out of coins? Claim 50";
+    b.textContent = left > 0 ? `Free ${perks().bonusAmount} coins in ${left}s` : `Out of coins? Claim ${perks().bonusAmount}`;
     if (left > 0) updBonus.t = setTimeout(updBonus, 1000);
   }
   $("bonus").onclick = () => {
-    if (coins >= 10 || RULES.bonusLeft(bonusAt, Date.now()) > 0) return updBonus();
+    if (coins >= 10 || RULES.bonusLeft(bonusAt, Date.now(), perks().bonusWait) > 0) return updBonus();
     bonusAt = Date.now();
     store.set({ bonusAt });
-    setCoins(coins + 50);
-    $("flipResult").innerHTML = `<span class="win-txt">+50 free coins</span>`;
+    const amt = perks().bonusAmount;
+    setCoins(coins + amt);
+    $("flipResult").innerHTML = `<span class="win-txt">+${amt} free coins</span>`;
   };
 
+
+  // ---------- skill tree ----------
+  function renderSkills() {
+    const branches = [...new Set(RULES.SKILLS.map((s) => s.branch))];
+    $("skillTree").innerHTML = branches.map((br) => `<div class="sk-branch"><div class="label">${br}</div>` +
+      RULES.SKILLS.filter((s) => s.branch === br).map((s) => {
+        const own = skills.includes(s.id), open = !s.req || skills.includes(s.req);
+        const cls = own ? "own" : open ? (coins >= s.cost ? "buy" : "open") : "locked";
+        return `<button class="sk ${cls}" data-sk="${s.id}" ${own || !open ? "disabled" : ""}>
+          <span class="sk-ic">${open || own ? s.icon : "🔒"}</span><b>${s.name}</b>
+          <span class="small">${s.desc}</span><span class="sk-cost">${own ? "Owned" : s.cost.toLocaleString() + " coins"}</span></button>`;
+      }).join('<div class="sk-link"></div>') + `</div>`).join("");
+    $("skillTree").querySelectorAll("[data-sk]").forEach((b) => (b.onclick = () => buySkill(b.dataset.sk)));
+  }
+  function buySkill(id) {
+    const s = RULES.SKILLS.find((k) => k.id === id);
+    if (!RULES.canBuy(skills, id, coins)) { $("skStatus").innerHTML = `<span class="lose-txt">Need ${s.cost.toLocaleString()} coins</span>`; return; }
+    skills = [...skills, id];
+    store.set({ skills });
+    setCoins(coins - s.cost);
+    $("skStatus").innerHTML = `<span class="win-txt">Unlocked ${s.name}!</span>`;
+    renderSkills();
+  }
 
   // ---------- secret owner panel ----------
   // Unlock: tap a coin logo, then flip with a bet of 0 three times, then enter the password.
@@ -441,10 +473,10 @@
     clearInterval(beat.t);
     store.remove("activeDuel");
     let saved = false;
-    if (res > 0) setCoins(coins + duel.bet);
+    if (res > 0) setCoins(coins + duel.bet + Math.floor(duel.bet * perks().duelBonus));
     else if (res < 0 && !owner.shield) {
       saved = luck() > 0 && Math.random() * 100 < luck();
-      if (!saved) setCoins(coins - duel.bet);
+      if (!saved) setCoins(coins - duel.bet + Math.floor(duel.bet * perks().duelRefund));
     }
     $("forfeit").hidden = true;
     const d = duel;
@@ -642,7 +674,7 @@
   };
 
   // ---------- boot ----------
-  Promise.resolve(store.get(["coins", "name", "pid", "activeDuel", "owner", "luck", "bonusAt"])).then(async (d) => {
+  Promise.resolve(store.get(["coins", "name", "pid", "activeDuel", "owner", "luck", "bonusAt", "skills"])).then(async (d) => {
     d = d || {};
     coins = typeof d.coins === "number" ? d.coins : 100;
     // pid stays private (it proves who owns a leaderboard row); others only see its hash.
@@ -653,6 +685,7 @@
     $("name").value = me.name;
     if (d.owner && typeof d.owner === "object") owner = { ...owner, ...d.owner };
     given = clampLuck(d.luck);
+    skills = Array.isArray(d.skills) ? d.skills.filter((x) => typeof x === "string") : [];
     bonusAt = typeof d.bonusAt === "number" && d.bonusAt <= Date.now() ? d.bonusAt : 0;
     applyOwner();
     const liveElsewhere = d.activeDuel && d.activeDuel.at && Date.now() - d.activeDuel.at < 15000;
@@ -684,6 +717,7 @@
       $("name").value = me.name;
       track();
     }
+    if (changes.skills && Array.isArray(changes.skills.newValue)) { skills = changes.skills.newValue; updBonus(); if (!$("skills").hidden) renderSkills(); }
     if (changes.luck) { given = clampLuck(changes.luck.newValue); track(); }
     if (changes.bonusAt && typeof changes.bonusAt.newValue === "number") { bonusAt = changes.bonusAt.newValue; updBonus(); }
     if (changes.owner && changes.owner.newValue && typeof changes.owner.newValue === "object") {
