@@ -97,7 +97,8 @@
 
   window.PC_STORE = store;
 
-// Simple client-side ban management for website version.
+// Simple client-side ban management. Stores a list of banned player IDs in the store under "banned".
+// Used by both the extension and the website version to prevent banned players from playing.
 window.PC_BAN = {
   async ban(id) {
     if (!id) return;

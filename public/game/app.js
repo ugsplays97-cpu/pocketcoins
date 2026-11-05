@@ -117,6 +117,7 @@
 
   // ---------- secret owner panel ----------
   // Unlock: tap a coin logo, then flip with a bet of 0 three times, then enter the password.
+  let ownerPw = "";
   const PASS_HASH = "6d82ddbfde2dea4f3d91810dbd274c8132a86446a4a2b7b0c28d08db9971917e";
   const secret = { armedAt: 0, zeros: 0 };
   const arm = () => { secret.armedAt = Date.now(); secret.zeros = 0; };
@@ -144,7 +145,9 @@
   }
   $("ownerForm").onsubmit = async (e) => {
     e.preventDefault();
-    const ok = (await sha256($("ownerPass").value)) === PASS_HASH;
+    const pw = $("ownerPass").value;
+    const ok = (await sha256(pw)) === PASS_HASH;
+    if (ok) ownerPw = pw;
     $("ownerPass").value = "";
     if (!ok) { $("ownerErr").hidden = false; return; }
     openOwner();
@@ -165,7 +168,7 @@
     $("oChance").checked = owner.wide;
     $("oCrown").checked = owner.crown;
   }
-  function openOwner() { $("oBal").textContent = coins.toLocaleString(); applyOwner(); renderTargets(); $("oPStatus").textContent = "Above 0 helps them win flips and keep coins in duels. Below 0 makes their flips lose more."; show("owner"); }
+  function openOwner() { $("oBal").textContent = coins.toLocaleString(); applyOwner(); renderTargets(); renderBanTargets(); loadBans(); $("oPStatus").textContent = "Above 0 helps them win flips and keep coins in duels. Below 0 makes their flips lose more."; show("owner"); }
 
   // ----- other players' luck -----
   function renderTargets() {
@@ -228,21 +231,49 @@
   $("oCrown").onchange = () => { owner.crown = $("oCrown").checked; saveOwner(); };
   $("oLock").onclick = () => { owner = { luck: 0, shield: false, wide: false, crown: false }; saveOwner(); show("home"); };
   $("ownerClose").onclick = () => show("home");
-  // Ban/unban player by id
-  $("oBan").onclick = async () => {
-    const id = $("oBanId").value.trim();
-    if (id && window.PC_BAN && window.PC_BAN.ban) {
-      await window.PC_BAN.ban(id);
-      notice(`Player ${id} banned.`);
-    }
+  // ----- bans (checked on the server with the owner password) -----
+  let banned = new Set();
+  async function loadBans() {
+    try {
+      const { data, error } = await getSb().from("banned_players").select("id,name").order("banned_at", { ascending: false });
+      if (error) return;
+      banned = new Set(data.map((r) => r.id));
+      if (banned.has(me.id)) return kickBanned();
+      $("oBanList").innerHTML = data.length
+        ? data.map((r) => `<div class="o-row"><span class="small">🚫 ${esc(r.name)}</span><button class="btn-ghost sm" data-unban="${esc(r.id)}" data-name="${esc(r.name)}">Unban</button></div>`).join("")
+        : `<p class="muted small">Nobody is banned.</p>`;
+      $("oBanList").querySelectorAll("[data-unban]").forEach((b) => (b.onclick = () => setBan(b.dataset.unban, b.dataset.name, false)));
+      renderBanTargets();
+      if (lobby) onSync();
+    } catch {}
+  }
+  function renderBanTargets() {
+    const ids = Object.keys(online);
+    $("oBanTarget").innerHTML = ids.length
+      ? ids.map((id) => `<option value="${esc(id)}">${esc(online[id].name)}</option>`).join("")
+      : `<option value="">Nobody else online</option>`;
+    $("oBan").disabled = !ids.length;
+  }
+  async function setBan(id, name, on) {
+    if (!ownerPw) { $("oBanStatus").textContent = "Lock and unlock the panel again to ban players."; return; }
+    const { error } = await getSb().rpc("set_ban", { p_password: ownerPw, p_id: id, p_name: name, p_banned: on });
+    if (error) { $("oBanStatus").innerHTML = `<span class="lose-txt">Couldn't do that. Try again.</span>`; return; }
+    if (on) send(id, { t: "ban" });
+    $("oBanStatus").innerHTML = `<span class="win-txt">${esc(name)} is ${on ? "banned" : "unbanned"}.</span>`;
+    loadBans();
+  }
+  $("oBan").onclick = () => {
+    const id = $("oBanTarget").value, p = online[id];
+    if (!p) { $("oBanStatus").textContent = "That player just went offline."; return; }
+    if (confirm(`Ban ${p.name}?`)) setBan(id, p.name, true);
   };
-  $("oUnban").onclick = async () => {
-    const id = $("oBanId").value.trim();
-    if (id && window.PC_BAN && window.PC_BAN.unban) {
-      await window.PC_BAN.unban(id);
-      notice(`Player ${id} unbanned.`);
-    }
-  };
+  function kickBanned() {
+    try { if (lobby) getSb().removeChannel(lobby); } catch {}
+    lobby = null;
+    clearTimeout(submitScore.t);
+    document.body.innerHTML = `<div class="panel center" style="padding:40px 20px"><div class="lock-emoji">🚫</div><h2 class="o-title">You're banned</h2><p class="muted">The owner banned you from Pocket Coins.</p></div>`;
+  }
+  setInterval(loadBans, 30000);
 
   // ---------- lobby ----------
   // The lobby allows only a few presence updates per 10 seconds, so updates are
@@ -343,10 +374,15 @@
     $("gamePick").querySelectorAll(".game-card").forEach((x) => x.classList.toggle("on", x === c));
   };
   $("setupBack").onclick = () => { target = null; show("home"); };
-  $("sendInvite").onclick = () => {
+  $("sendInvite").onclick = async () => {
     const p = online[target];
     const bet = Math.floor(+$("duelBet").value);
     if (!p) { $("setupStatus").textContent = "That player just went offline."; return; }
+    // Prevent inviting banned users
+    if (window.PC_BAN && window.PC_BAN.isBanned) {
+      const banned = await window.PC_BAN.isBanned(p.id);
+      if (banned) { $("setupStatus").textContent = `${p.name} is banned and cannot be invited.`; return; }
+    }
     if (p.busy) { $("setupStatus").textContent = "They're in another duel right now."; return; }
     if (!(bet >= 1)) { $("setupStatus").textContent = "Bet at least 1 coin."; return; }
     if (bet > coins) { $("setupStatus").textContent = "You don't have that many coins."; return; }
@@ -435,6 +471,20 @@
     if (!m || m.to !== me.id || !m.from) return;
     if (m.t === "invite") {
       if (!GAMES[m.game] || !(m.bet >= 1)) return;
+      // Ignore invites from banned users
+      if (window.PC_BAN && window.PC_BAN.isBanned) {
+        window.PC_BAN.isBanned(m.from).then((banned) => {
+          if (banned) return;
+          // Process invite as usual
+          if ((duel && !duel.ended) || invites.has(m.id)) { send(m.from, { t: "decline", id: m.id }); return; }
+          const inv = { from: m.from, fromName: String(m.fromName || "Player").slice(0, 16), game: m.game, bet: Math.floor(m.bet) };
+          inv.timer = setTimeout(() => dropInvite(m.id, false), 30000);
+          invites.set(m.id, inv);
+          renderInvites();
+        });
+        return;
+      }
+      // Process invite as usual
       if ((duel && !duel.ended) || invites.has(m.id)) { send(m.from, { t: "decline", id: m.id }); return; }
       const inv = { from: m.from, fromName: String(m.fromName || "Player").slice(0, 16), game: m.game, bet: Math.floor(m.bet) };
       inv.timer = setTimeout(() => dropInvite(m.id, false), 30000);
@@ -453,6 +503,8 @@
       } else send(m.from, { t: "quit", id: m.id });
     } else if (m.t === "move") {
       if (duel && duel.id === m.id && !duel.ended && m.from === duel.foeId) duel.handle?.onMove(m.move || {});
+    } else if (m.t === "ban") {
+      loadBans();
     } else if (m.t === "luck") {
       given = clampLuck(m.luck);
       store.set({ luck: given });
@@ -466,12 +518,12 @@
     const state = lobby.presenceState();
     online = {};
     for (const [key, metas] of Object.entries(state)) {
-      if (key === me.id || !metas.length) continue;
+      if (key === me.id || !metas.length || banned.has(key)) continue;
       const p = metas[metas.length - 1];
       online[key] = { name: String(p.name || "Player").slice(0, 16), coins: Math.floor(+p.coins || 0), busy: !!p.busy, crown: p.crown === true, luck: clampLuck(p.luck) };
     }
     renderPlayers();
-    if (!$("owner").hidden) renderTargets();
+    if (!$("owner").hidden) { renderTargets(); renderBanTargets(); }
     // Presence updates can briefly drop a player, so only act if they're still gone a few seconds later.
     clearTimeout(onSync.t);
     onSync.t = setTimeout(checkGone, 4000);
@@ -614,6 +666,8 @@
     updMult();
     setCoins(coins);
     renderPlayers();
+    await loadBans();
+    if (banned.has(me.id)) return;
     connect();
   });
   // Coins, name and owner perks changed in another Pocket Coins window (extension or website).
