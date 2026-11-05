@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      banned_players: {
+        Row: {
+          banned_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          banned_at?: string
+          id: string
+          name?: string
+        }
+        Update: {
+          banned_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       leaderboard: {
         Row: {
           coins: number
@@ -43,6 +61,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      set_ban: {
+        Args: {
+          p_banned: boolean
+          p_id: string
+          p_name: string
+          p_password: string
+        }
+        Returns: boolean
+      }
       submit_score: {
         Args: {
           p_coins: number

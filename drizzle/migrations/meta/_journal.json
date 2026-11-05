@@ -15,6 +15,13 @@
       "when": 1793453760109,
       "tag": "0001_leaderboard_skip_fresh_players",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793875221805,
+      "tag": "0002_player_bans",
+      "breakpoints": true
     }
   ]
 }
