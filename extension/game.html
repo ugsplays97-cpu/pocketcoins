@@ -22,6 +22,7 @@
     <button data-tab="flip" class="on">Flip</button>
     <button data-tab="players">Players <span id="onlineCount" class="count">0</span></button>
     <button data-tab="top">Top</button>
+    <button data-tab="skills">Skills</button>
   </nav>
 
   <section id="flip" class="panel">
@@ -59,6 +60,12 @@
     <div class="field-head"><span class="label">Richest players</span><span class="muted small">All time</span></div>
     <div id="lbList" class="plist"><div class="empty">Loading…</div></div>
     <div id="lbMe"></div>
+  </section>
+
+  <section id="skills" class="panel" hidden>
+    <div class="field-head"><span class="label">Skill tree</span><span class="muted small">Spend coins on perks</span></div>
+    <div id="skillTree" class="sk-tree"></div>
+    <p id="skStatus" class="result"></p>
   </section>
 </main>
 
