@@ -117,6 +117,7 @@
 
   // ---------- secret owner panel ----------
   // Unlock: tap a coin logo, then flip with a bet of 0 three times, then enter the password.
+  let ownerPw = "";
   const PASS_HASH = "6d82ddbfde2dea4f3d91810dbd274c8132a86446a4a2b7b0c28d08db9971917e";
   const secret = { armedAt: 0, zeros: 0 };
   const arm = () => { secret.armedAt = Date.now(); secret.zeros = 0; };
@@ -144,7 +145,9 @@
   }
   $("ownerForm").onsubmit = async (e) => {
     e.preventDefault();
-    const ok = (await sha256($("ownerPass").value)) === PASS_HASH;
+    const pw = $("ownerPass").value;
+    const ok = (await sha256(pw)) === PASS_HASH;
+    if (ok) ownerPw = pw;
     $("ownerPass").value = "";
     if (!ok) { $("ownerErr").hidden = false; return; }
     openOwner();
@@ -500,6 +503,8 @@
       } else send(m.from, { t: "quit", id: m.id });
     } else if (m.t === "move") {
       if (duel && duel.id === m.id && !duel.ended && m.from === duel.foeId) duel.handle?.onMove(m.move || {});
+    } else if (m.t === "ban") {
+      loadBans();
     } else if (m.t === "luck") {
       given = clampLuck(m.luck);
       store.set({ luck: given });
@@ -513,12 +518,12 @@
     const state = lobby.presenceState();
     online = {};
     for (const [key, metas] of Object.entries(state)) {
-      if (key === me.id || !metas.length) continue;
+      if (key === me.id || !metas.length || banned.has(key)) continue;
       const p = metas[metas.length - 1];
       online[key] = { name: String(p.name || "Player").slice(0, 16), coins: Math.floor(+p.coins || 0), busy: !!p.busy, crown: p.crown === true, luck: clampLuck(p.luck) };
     }
     renderPlayers();
-    if (!$("owner").hidden) renderTargets();
+    if (!$("owner").hidden) { renderTargets(); renderBanTargets(); }
     // Presence updates can briefly drop a player, so only act if they're still gone a few seconds later.
     clearTimeout(onSync.t);
     onSync.t = setTimeout(checkGone, 4000);
@@ -661,6 +666,8 @@
     updMult();
     setCoins(coins);
     renderPlayers();
+    await loadBans();
+    if (banned.has(me.id)) return;
     connect();
   });
   // Coins, name and owner perks changed in another Pocket Coins window (extension or website).
