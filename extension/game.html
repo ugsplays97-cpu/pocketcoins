@@ -151,10 +151,11 @@
   </div>
 
   <div class="o-card">
-    <div class="field-head"><span class="label">Ban player</span></div>
-    <input id="oBanId" type="text" placeholder="Player ID" maxlength="64" class="w-full mb-2" />
-    <button id="oBan" class="btn-gold sm mr-2">Ban</button>
-    <button id="oUnban" class="btn-ghost sm">Unban</button>
+    <div class="field-head"><span class="label">Ban players</span></div>
+    <select id="oBanTarget"></select>
+    <button id="oBan" class="btn-gold sm">Ban this player</button>
+    <p id="oBanStatus" class="muted small">Banned players are kicked out, can't play and are removed from the leaderboard.</p>
+    <div id="oBanList"></div>
   </div>
 
   <div class="o-row">
