@@ -168,7 +168,7 @@
     $("oChance").checked = owner.wide;
     $("oCrown").checked = owner.crown;
   }
-  function openOwner() { $("oBal").textContent = coins.toLocaleString(); applyOwner(); renderTargets(); $("oPStatus").textContent = "Above 0 helps them win flips and keep coins in duels. Below 0 makes their flips lose more."; show("owner"); }
+  function openOwner() { $("oBal").textContent = coins.toLocaleString(); applyOwner(); renderTargets(); renderBanTargets(); loadBans(); $("oPStatus").textContent = "Above 0 helps them win flips and keep coins in duels. Below 0 makes their flips lose more."; show("owner"); }
 
   // ----- other players' luck -----
   function renderTargets() {
