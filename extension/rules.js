@@ -36,7 +36,19 @@
     B("wheel", "🎡", "Roulette", 8000, 4),
     B("bar", "🍸", "Bar", 50000, 15),
     B("vip", "💎", "VIP Lounge", 300000, 60),
+    B("poker", "♠️", "Poker Room", 2000000, 250),
+    B("tower", "🏙️", "High-Roller Tower", 15000000, 1200),
   ];
+  // One-time casino upgrades (saved in the casino object as "up_<id>": 1).
+  const UPGRADES = [
+    { id: "neon", icon: "💡", name: "Neon Sign", desc: "All places make 25% more", cost: 5000, mult: 1.25 },
+    { id: "goldslots", icon: "🪙", name: "Golden Slots", desc: "Slot Machines make 3×", cost: 20000, only: "slot", mult: 3 },
+    { id: "security", icon: "🛡️", name: "Security Guards", desc: "Earn while away for 24h (not 8h)", cost: 60000 },
+    { id: "dealers", icon: "🤵", name: "Pro Dealers", desc: "Card Tables & Roulette make 2×", cost: 150000, only: ["table", "wheel"], mult: 2 },
+    { id: "valet", icon: "🚗", name: "Valet Parking", desc: "All places make 50% more", cost: 750000, mult: 1.5 },
+    { id: "penthouse", icon: "🌃", name: "Penthouse Suite", desc: "All places make 2×", cost: 5000000, mult: 2 },
+  ];
+  const hasUp = (casino, id) => !!(casino || {})["up_" + id];
   const MAX_LEVEL = 5;
   // Packs: bought with coins, give coins + chips. Odds add up to 100.
   const PACKS = [
@@ -74,6 +86,8 @@
   window.PC_RULES = {
     SKILLS,
     BUILDINGS,
+    UPGRADES,
+    hasUp,
     MAX_LEVEL,
     levelMult: LEVEL_MULT,
     PACKS,
@@ -110,9 +124,13 @@
       return b ? Math.ceil(b.cost * Math.pow(1.15, Math.max(0, owned || 0))) : Infinity;
     },
     /** Chips per second from the casino ({ slot: 2, ... }). */
-    chipRate: (casino) => BUILDINGS.reduce((n, b) => n + b.rate * Math.max(0, Math.floor((casino || {})[b.id]) || 0), 0),
+    chipRate: (casino) => BUILDINGS.reduce((n, b) => {
+      let m = 1;
+      for (const u of UPGRADES) if (u.mult && hasUp(casino, u.id) && (!u.only || [].concat(u.only).includes(b.id))) m *= u.mult;
+      return n + b.rate * m * Math.max(0, Math.floor((casino || {})[b.id]) || 0);
+    }, 0),
     /** Chips earned since the last visit (capped at 8 hours). */
-    offlineChips: (casino, since, now) => (since ? Math.max(0, Math.min(OFFLINE_CAP, now - since)) / 1000 : 0) * window.PC_RULES.chipRate(casino),
+    offlineChips: (casino, since, now) => (since ? Math.max(0, Math.min(hasUp(casino, "security") ? OFFLINE_CAP * 3 : OFFLINE_CAP, now - since)) / 1000 : 0) * window.PC_RULES.chipRate(casino),
     /** Combined effects of the owned skills (levels make them stronger). */
     perks: (owned, levels) => {
       const L = levels || {};
