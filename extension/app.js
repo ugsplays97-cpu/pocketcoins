@@ -31,7 +31,12 @@
   const RULES = window.PC_RULES;
   const clampLuck = RULES.clampLuck;
   let skills = [];
-  const perks = () => RULES.perks(skills);
+  let skillLv = {}; // skill id -> level (1..3)
+  let inv = []; // item ids in the bag
+  let betItem = null; // index into inv being bet on the next flip
+  let chips = 0, casino = {}, casinoAt = 0; // casino tycoon
+  const perks = () => RULES.perks(skills, skillLv);
+  const cfmt = (n) => { n = Math.floor(+n || 0); return n >= 1e6 ? (n / 1e6).toFixed(1).replace(/\.0$/, "") + "M" : n >= 1e4 ? (n / 1e3).toFixed(1).replace(/\.0$/, "") + "k" : n.toLocaleString(); };
   const luck = () => clampLuck(owner.luck + given + perks().luck);
   const luckLabel = (n) => n >= 100 ? "Always win" : n <= -100 ? "Always lose" : n > 0 ? `+${n}%` : n < 0 ? `${n}%` : "Normal";
   // Free coins can be claimed once a minute.
@@ -60,6 +65,10 @@
     $("players").hidden = name !== "players";
     $("top").hidden = name !== "top";
     $("skills").hidden = name !== "skills";
+    $("casino").hidden = name !== "casino";
+    $("bag").hidden = name !== "bag";
+    if (name === "bag") renderBag();
+    if (name === "casino") renderCasino();
     if (name === "top") loadTop();
     if (name === "skills") renderSkills();
   }
@@ -78,6 +87,7 @@
     $("bet").value = Math.max(1, Math.min(v, Math.max(coins, 1)));
   }));
   $("spin").onclick = () => {
+    if (betItem != null) return flipItem();
     const raw = $("bet").value.trim();
     const bet = Math.floor(+raw), c = +$("chance").value;
     const res = $("flipResult");
@@ -88,7 +98,7 @@
     coin.classList.remove("spin"); void coin.offsetWidth; coin.classList.add("spin");
     res.textContent = "";
     setTimeout(() => {
-      const odds = RULES.flipOdds(c, luck());
+      const odds = Math.min(100, RULES.flipOdds(c, luck()) * (1 + perks().winBoost));
       if (Math.random() * 100 < odds) {
         const win = Math.floor(((bet * 100) / c - bet) * (1 + perks().flipBonus));
         setCoins(coins + win);
@@ -104,6 +114,62 @@
       $("spin").disabled = false;
     }, 700);
   };
+  // ---------- inventory ----------
+  const rarName = (r) => (RULES.RARITIES.find((x) => x.id === r) || {}).name || r;
+  function setInv(next) { inv = next; store.set({ inv }); }
+  function renderBag() {
+    const worth = inv.reduce((n, id) => n + ((RULES.item(id) || {}).value || 0), 0);
+    $("bagWorth").textContent = cfmt(worth);
+    const counts = {};
+    inv.forEach((id) => (counts[id] = (counts[id] || 0) + 1));
+    const ids = Object.keys(counts).sort((a, b) => RULES.item(b).value - RULES.item(a).value);
+    $("bagList").innerHTML = ids.length ? ids.map((id) => {
+      const it = RULES.item(id);
+      return `<div class="biz r-${it.rarity} bag-item"><span class="biz-ic">${it.icon}</span><div class="biz-main"><b>${it.name}</b> <span class="muted small">×${counts[id]}</span>
+        <div class="small rar">${rarName(it.rarity)} · ${cfmt(it.value)} 🪙</div></div>
+        <button class="btn-ghost sm" data-sell="${id}">Sell</button><button class="btn-gold sm" data-ibet="${id}">Bet</button></div>`;
+    }).join("") : `<div class="empty">Your bag is empty. Open packs in the Casino tab.</div>`;
+    $("bagList").querySelectorAll("[data-sell]").forEach((b) => (b.onclick = () => {
+      const i = inv.indexOf(b.dataset.sell); if (i < 0) return;
+      const it = RULES.item(b.dataset.sell);
+      setInv(inv.filter((_, k) => k !== i)); setCoins(coins + it.value); renderBag();
+    }));
+    $("bagList").querySelectorAll("[data-ibet]").forEach((b) => (b.onclick = () => { pickBetItem(inv.indexOf(b.dataset.ibet)); tab("flip"); }));
+  }
+  function pickBetItem(i) {
+    betItem = i >= 0 && inv[i] ? i : null;
+    const it = betItem != null && RULES.item(inv[betItem]);
+    $("itemBet").hidden = !it;
+    $("coinBet").hidden = !!it;
+    if (it) {
+      $("itemBet").innerHTML = `<span class="biz-ic">${it.icon}</span><div class="biz-main"><b>Betting ${it.name}</b><div class="small muted">Worth ${cfmt(it.value)} 🪙 — win coins, or lose the item</div></div><button id="itemBetX" class="btn-ghost sm">✕</button>`;
+      $("itemBetX").onclick = () => pickBetItem(-1);
+    }
+  }
+  function flipItem() {
+    const id = inv[betItem], it = RULES.item(id), c = +$("chance").value, res = $("flipResult");
+    if (!it) return pickBetItem(-1);
+    $("spin").disabled = true;
+    const coin = $("flipCoin");
+    coin.classList.remove("spin"); void coin.offsetWidth; coin.classList.add("spin");
+    res.textContent = "";
+    setTimeout(() => {
+      const odds = Math.min(100, RULES.flipOdds(c, luck()) * (1 + perks().winBoost));
+      if (Math.random() * 100 < odds) {
+        const win = Math.floor(((it.value * 100) / c - it.value) * (1 + perks().flipBonus));
+        setCoins(coins + win);
+        res.innerHTML = `<span class="win-txt">Kept ${it.icon} and won +${cfmt(win)} coins</span>`;
+      } else if (owner.shield) {
+        res.innerHTML = `<span class="muted">Lost, but your ${it.name} is safe</span>`;
+      } else {
+        setInv(inv.filter((_, k) => k !== betItem));
+        res.innerHTML = `<span class="lose-txt">Lost your ${it.icon} ${it.name}</span>`;
+      }
+      pickBetItem(inv.indexOf(id));
+      $("spin").disabled = false;
+    }, 700);
+  }
+
   function updBonus() {
     const b = $("bonus");
     b.hidden = coins >= 10;
@@ -125,27 +191,102 @@
 
 
   // ---------- skill tree ----------
+  let skSel = null;
+  const skBoost = (s) => { const m = s.desc.match(/([\d.]+%)|every (\d+s)|gives (\d+)/); return m ? (m[1] ? "+" + m[1] : m[2] ? m[2] : m[3]) : ""; };
   function renderSkills() {
     const branches = [...new Set(RULES.SKILLS.map((s) => s.branch))];
-    $("skillTree").innerHTML = branches.map((br) => `<div class="sk-branch"><div class="label">${br}</div>` +
+    $("skillTree").innerHTML = `<div class="hive">` + branches.map((br, i) => `<div class="hive-col${i % 2 ? " down" : ""}"><div class="hive-label">${br}</div>` +
       RULES.SKILLS.filter((s) => s.branch === br).map((s) => {
         const own = skills.includes(s.id), open = !s.req || skills.includes(s.req);
-        const cls = own ? "own" : open ? (coins >= s.cost ? "buy" : "open") : "locked";
-        return `<button class="sk ${cls}" data-sk="${s.id}" ${own || !open ? "disabled" : ""}>
-          <span class="sk-ic">${open || own ? s.icon : "🔒"}</span><b>${s.name}</b>
-          <span class="small">${s.desc}</span><span class="sk-cost">${own ? "Owned" : s.cost.toLocaleString() + " coins"}</span></button>`;
-      }).join('<div class="sk-link"></div>') + `</div>`).join("");
-    $("skillTree").querySelectorAll("[data-sk]").forEach((b) => (b.onclick = () => buySkill(b.dataset.sk)));
+        const price = RULES.skillChipCost(s), lv = RULES.level(skillLv, s.id);
+        const cls = own ? "own" : open ? (chips >= price ? "buy" : "open") : "locked";
+        return `<button class="hex ${cls}${skSel === s.id ? " sel" : ""}" data-sk="${s.id}" title="${s.name}"><span><i>${open || own ? s.icon : "🔒"}</i><em>${skBoost(s)}</em><small>${own ? "★".repeat(lv) : cfmt(price) + "◆"}</small></span></button>`;
+      }).join("") + `</div>`).join("") + `</div><div id="skInfo" class="sk-info"></div>`;
+    $("skillTree").querySelectorAll("[data-sk]").forEach((b) => (b.onclick = () => { skSel = b.dataset.sk; $("skStatus").textContent = ""; renderSkills(); }));
+    const s = RULES.SKILLS.find((k) => k.id === skSel);
+    if (!s) { $("skInfo").innerHTML = `<span class="muted small">Tap a cell to see the skill. Each one unlocks the cell below it.</span>`; return; }
+    const own = skills.includes(s.id), open = !s.req || skills.includes(s.req);
+    const req = s.req && RULES.SKILLS.find((k) => k.id === s.req);
+    const price = RULES.skillChipCost(s), lv = RULES.level(skillLv, s.id), up = RULES.upgradeCost(s.id, skillLv);
+    $("skInfo").innerHTML = `<div class="sk-head"><span class="sk-ic">${s.icon}</span><div><b>${s.name}</b><div class="small muted">${s.branch}${own ? ` · Level ${lv}/${RULES.MAX_LEVEL}` : ""}</div></div></div>
+      <div>${s.desc}${own && lv > 1 ? ` <span class="win-txt small">×${RULES.levelMult(lv)}</span>` : ""}</div>` +
+      (own ? (up == null ? `<div class="win-txt small">Max level</div>` : `<button id="skUp" class="btn-gold" ${chips >= up ? "" : "disabled"}>Upgrade to ×${RULES.levelMult(lv + 1)} for ${up.toLocaleString()} ◆</button>`)
+        : !open ? `<div class="muted small">🔒 Unlock ${req.name} first</div>` :
+      `<button id="skBuy" class="btn-gold" ${chips >= price ? "" : "disabled"}>Buy for ${price.toLocaleString()} ◆ chips</button>`);
+    if ($("skBuy")) $("skBuy").onclick = () => buySkill(s.id);
+    if ($("skUp")) $("skUp").onclick = () => upgradeSkill(s.id);
   }
   function buySkill(id) {
     const s = RULES.SKILLS.find((k) => k.id === id);
-    if (!RULES.canBuy(skills, id, coins)) { $("skStatus").innerHTML = `<span class="lose-txt">Need ${s.cost.toLocaleString()} coins</span>`; return; }
+    if (!RULES.canBuy(skills, id, chips)) { $("skStatus").innerHTML = `<span class="lose-txt">Need ${RULES.skillChipCost(s).toLocaleString()} ◆ chips — build your casino</span>`; return; }
     skills = [...skills, id];
     store.set({ skills });
-    setCoins(coins - s.cost);
+    setChips(chips - RULES.skillChipCost(s));
+    updBonus();
     $("skStatus").innerHTML = `<span class="win-txt">Unlocked ${s.name}!</span>`;
     renderSkills();
   }
+
+  function upgradeSkill(id) {
+    const s = RULES.SKILLS.find((k) => k.id === id), up = RULES.upgradeCost(id, skillLv);
+    if (up == null || !skills.includes(id)) return;
+    if (chips < up) { $("skStatus").innerHTML = `<span class="lose-txt">Need ${up.toLocaleString()} ◆ chips</span>`; return; }
+    skillLv = { ...skillLv, [id]: RULES.level(skillLv, id) + 1 };
+    store.set({ skillLv });
+    setChips(chips - up);
+    updBonus();
+    $("skStatus").innerHTML = `<span class="win-txt">${s.name} is now level ${skillLv[id]}!</span>`;
+    renderSkills();
+  }
+
+  // ---------- casino tycoon ----------
+  function setChips(n) {
+    chips = Math.max(0, n);
+    $("chipBal").textContent = cfmt(chips);
+    store.set({ chips, casinoAt: (casinoAt = Date.now()) });
+  }
+  function renderCasino() {
+    const rate = RULES.chipRate(casino);
+    $("chipRate").textContent = (rate < 10 ? rate.toFixed(1) : cfmt(rate)) + "/s";
+    $("casinoChips").textContent = cfmt(chips);
+    $("casinoList").innerHTML = RULES.BUILDINGS.map((b) => {
+      const n = casino[b.id] || 0, cost = RULES.buildingCost(b.id, n);
+      return `<div class="biz"><span class="biz-ic">${b.icon}</span><div class="biz-main"><b>${b.name}</b> <span class="muted small">×${n}</span>
+        <div class="small muted">+${b.rate} ◆/s each</div></div>
+        <button class="btn-gold sm biz-buy" data-biz="${b.id}" ${coins >= cost ? "" : "disabled"}>${cfmt(cost)} 🪙</button></div>`;
+    }).join("");
+    $("packList").innerHTML = RULES.PACKS.map((p) => `<div class="biz"><span class="biz-ic">${p.icon}</span><div class="biz-main"><b>${p.name}</b>
+        <div class="small muted">Coins + ◆ chips</div></div><button class="btn-gold sm biz-buy" data-pack="${p.id}" ${coins >= p.cost ? "" : "disabled"}>${cfmt(p.cost)} 🪙</button></div>`).join("");
+    $("packList").querySelectorAll("[data-pack]").forEach((btn) => (btn.onclick = () => buyPack(btn.dataset.pack)));
+    $("casinoList").querySelectorAll("[data-biz]").forEach((btn) => (btn.onclick = () => buyBuilding(btn.dataset.biz)));
+  }
+  function buyPack(id) {
+    const p = RULES.PACKS.find((k) => k.id === id);
+    if (!p || coins < p.cost) return;
+    const r = RULES.openPack(id);
+    setCoins(coins - p.cost + r.coins);
+    setChips(chips + r.chips);
+    const it = RULES.item(r.item);
+    setInv([...inv, r.item]);
+    $("packResult").innerHTML = `<div class="pack-pop r-${r.rarity}"><b>${r.name}!</b><span class="pack-item">${it.icon} ${it.name}</span><span>+${cfmt(r.coins)} 🪙 · +${cfmt(r.chips)} ◆</span></div>`;
+    renderCasino();
+  }
+  function buyBuilding(id) {
+    const n = casino[id] || 0, cost = RULES.buildingCost(id, n);
+    if (coins < cost) return;
+    casino = { ...casino, [id]: n + 1 };
+    store.set({ casino });
+    setCoins(coins - cost);
+    renderCasino();
+  }
+  // Earn chips every second while the game is open.
+  setInterval(() => {
+    const rate = RULES.chipRate(casino);
+    if (!rate) return;
+    setChips(chips + rate);
+    if (!$("casino").hidden) renderCasino();
+    if (!$("skills").hidden && Math.floor(chips) !== Math.floor(chips - rate)) renderSkills();
+  }, 1000);
 
   // ---------- secret owner panel ----------
   // Unlock: tap a coin logo, then flip with a bet of 0 three times, then enter the password.
@@ -590,7 +731,6 @@
       } catch {}
     }, wait);
   }
-  const fmt = (n) => Math.floor(+n || 0).toLocaleString();
   const medal = (i) => ["🥇", "🥈", "🥉"][i] || `#${i + 1}`;
   function lbRow(rank, id, name, n, crown) {
     const mine = id === me.id, live = mine || !!online[id];
@@ -604,7 +744,7 @@
         </div>
         <div class="pmeta">${live ? `<span class="online-dot"></span>Online` : "Offline"}</div>
       </div>
-      <div class="lb-coins"><span class="dot"></span>${fmt(n)}</div>
+      <div class="lb-coins"><span class="dot"></span>${cfmt(n)}</div>
     </div>`;
   }
   async function loadTop() {
@@ -674,7 +814,7 @@
   };
 
   // ---------- boot ----------
-  Promise.resolve(store.get(["coins", "name", "pid", "activeDuel", "owner", "luck", "bonusAt", "skills"])).then(async (d) => {
+  Promise.resolve(store.get(["coins", "name", "pid", "activeDuel", "owner", "luck", "bonusAt", "skills", "skillLv", "chips", "casino", "casinoAt", "inv"])).then(async (d) => {
     d = d || {};
     coins = typeof d.coins === "number" ? d.coins : 100;
     // pid stays private (it proves who owns a leaderboard row); others only see its hash.
@@ -686,6 +826,12 @@
     if (d.owner && typeof d.owner === "object") owner = { ...owner, ...d.owner };
     given = clampLuck(d.luck);
     skills = Array.isArray(d.skills) ? d.skills.filter((x) => typeof x === "string") : [];
+    skillLv = d.skillLv && typeof d.skillLv === "object" ? d.skillLv : {};
+    casino = d.casino && typeof d.casino === "object" ? d.casino : {};
+    inv = Array.isArray(d.inv) ? d.inv.filter((x) => RULES.item(x)) : [];
+    const away = RULES.offlineChips(casino, typeof d.casinoAt === "number" ? d.casinoAt : 0, Date.now());
+    setChips((typeof d.chips === "number" ? d.chips : 0) + away);
+    if (away >= 1) setTimeout(() => notice(`Your casino made ${cfmt(away)} ◆ chips while you were away.`), 300);
     bonusAt = typeof d.bonusAt === "number" && d.bonusAt <= Date.now() ? d.bonusAt : 0;
     applyOwner();
     const liveElsewhere = d.activeDuel && d.activeDuel.at && Date.now() - d.activeDuel.at < 15000;

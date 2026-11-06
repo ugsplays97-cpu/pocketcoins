@@ -9,6 +9,7 @@
 <header class="top">
   <div class="brand"><img id="brandLogo" src="icon.png" alt=""><span>Pocket Coins</span></div>
   <div class="top-right">
+    <div class="bal chip-bal" title="Casino chips — spend them on skills"><span>◆</span><b id="chipBal">0</b></div>
     <div class="bal" title="Your coins"><span class="dot"></span><b id="bal">0</b></div>
     <button id="popout" class="icon-btn" title="Open in its own window">⧉</button>
   </div>
@@ -22,12 +23,15 @@
     <button data-tab="flip" class="on">Flip</button>
     <button data-tab="players">Players <span id="onlineCount" class="count">0</span></button>
     <button data-tab="top">Top</button>
+    <button data-tab="casino">Casino</button>
     <button data-tab="skills">Skills</button>
+    <button data-tab="bag">Bag</button>
   </nav>
 
   <section id="flip" class="panel">
     <div class="coin-stage"><img id="flipCoin" class="coin" src="icon.png" alt=""></div>
-    <div class="field">
+    <div id="itemBet" class="item-bet" hidden></div>
+    <div class="field" id="coinBet">
       <span class="label">Bet</span>
       <div class="bet-row">
         <input id="bet" type="number" min="1" value="10">
@@ -62,8 +66,24 @@
     <div id="lbMe"></div>
   </section>
 
+  <section id="casino" class="panel" hidden>
+    <div class="casino-head"><div><span class="label">Your casino</span><div class="casino-chips">◆ <b id="casinoChips">0</b></div></div><div class="muted small">Makes <b id="chipRate">0/s</b></div></div>
+    <p class="muted small">Buy places with coins. They make ◆ chips, even while you're away. Spend chips in Skills.</p>
+    <div id="casinoList" class="biz-list"></div>
+    <div class="field-head" style="margin-top:12px"><span class="label">Packs</span><span class="muted small">Common → Mythic</span></div>
+    <div id="packResult"></div>
+    <div id="packList" class="biz-list"></div>
+    <p class="muted small">Odds: Common 60% · Uncommon 25% · Rare 10% · Epic 4% · Legendary 0.9% · Mythic 0.1%</p>
+  </section>
+
+  <section id="bag" class="panel" hidden>
+    <div class="field-head"><span class="label">Inventory</span><span class="muted small">Worth <b id="bagWorth">0</b> 🪙</span></div>
+    <p class="muted small">Get items from packs. Sell them, or bet them on a flip.</p>
+    <div id="bagList" class="biz-list"></div>
+  </section>
+
   <section id="skills" class="panel" hidden>
-    <div class="field-head"><span class="label">Skill tree</span><span class="muted small">Spend coins on perks</span></div>
+    <div class="field-head"><span class="label">Skill tree</span><span class="muted small">Buy &amp; upgrade with ◆ chips</span></div>
     <div id="skillTree" class="sk-tree"></div>
     <p id="skStatus" class="result"></p>
   </section>

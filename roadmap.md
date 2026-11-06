@@ -17,3 +17,7 @@
 - [ ] Vercel site: sync coins + live game updates there — waiting on the user's Vercel address
 - [x] Leaderboard ("Top" tab) + owner "reset their luck / reset everyone"
 - [x] Owner panel: ban / unban players
+- [x] Skill tree: honeycomb layout, 20 balanced skills
+- [x] Casino tycoon: buildings make ◆ chips; chips buy skills and upgrade them to level 3
+- [x] Packs (Common→Mythic), skills up to level 5, no reinstall needed
+- [x] Inventory (Bag tab): pack items, sell or bet them on flips
