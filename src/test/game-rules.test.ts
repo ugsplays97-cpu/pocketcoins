@@ -5,6 +5,8 @@ import { beforeAll, describe, expect, it } from "vitest";
 type Rules = {
   bonusLeft: (bonusAt: number, now: number) => number;
   flipOdds: (chance: number, luck: number) => number;
+  packAvailable: (id: string, now: number) => boolean;
+  openPack: (id: string, rand: () => number, now: number) => { item: string; coins: number; chips: number } | null;
 };
 
 let rules: Rules;
@@ -40,5 +42,25 @@ describe("luck", () => {
 
   it("no luck keeps the picked win chance", () => {
     expect(rules.flipOdds(50, 0)).toBe(50);
+  });
+});
+
+describe("limited pack availability", () => {
+  const start = Date.parse("2026-11-06T10:13:00Z");
+  const end = Date.parse("2026-11-13T10:13:00Z");
+  it("opens during its seven-day window", () => {
+    expect(rules.packAvailable("first-limited", start - 1)).toBe(false);
+    expect(rules.packAvailable("first-limited", start)).toBe(true);
+    expect(rules.packAvailable("first-limited", end - 1)).toBe(true);
+  });
+  it("cannot open at or after the deadline", () => {
+    expect(rules.packAvailable("first-limited", end)).toBe(false);
+    expect(rules.openPack("first-limited", () => 0, end)).toBeNull();
+  });
+  it("uses existing saved-item rewards", () => {
+    expect(rules.openPack("first-limited", () => 0, start)).toEqual({
+      rarity: "common", name: "Common", item: "dice", coins: 800, chips: 200,
+    });
+    expect(rules.packAvailable("bronze", end)).toBe(true);
   });
 });
