@@ -9,6 +9,7 @@
   --gold-deep: #c4951a;
   --red: #ff6b6b;
   --green: #4ade80;
+  --chip: #5ee0e6;
   --wall: #efe7cf;
   --radius: 14px;
 }
@@ -235,3 +236,54 @@ body.win #popout { display: none; }
 .you { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; padding: 1px 6px; border-radius: 999px; background: var(--gold); color: #1a1407; vertical-align: middle; }
 #lbMe:not(:empty) { margin-top: 2px; padding-top: 8px; border-top: 1px dashed var(--line); }
 #lbMe .lb-row:nth-child(-n+3) .rank { font-size: 13px; }
+
+/* ---------- skill tree (honeycomb) ---------- */
+.hive { --hw: 78px; --hh: calc(var(--hw) * .866); display: flex; justify-content: center; padding: 4px 0 calc(var(--hh) / 2 + 6px); }
+.hive-col { display: flex; flex-direction: column; align-items: center; gap: 4px; width: var(--hw); }
+.hive-col + .hive-col { margin-left: calc(var(--hw) * -.22); }
+.hive-col.down { transform: translateY(calc(var(--hh) / 2 + 2px)); }
+.hive-label { font-size: 9px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); height: 14px; }
+.hex { width: var(--hw); height: var(--hh); clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
+  background: var(--line); display: grid; place-items: center; padding: 0; cursor: pointer; transition: transform .15s, filter .15s; }
+.hex > span { width: calc(100% - 4px); height: calc(100% - 4px); clip-path: inherit; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; background: var(--card); line-height: 1.1; }
+.hex i { font-style: normal; font-size: 18px; }
+.hex em { font-style: normal; font-size: 9px; font-weight: 800; color: var(--text); }
+.hex small { font-size: 9px; font-weight: 800; color: var(--gold); }
+.hex.own small { color: var(--green); }
+.hex:hover { transform: scale(1.06); }
+.hex.buy { background: var(--gold); }
+.hex.buy > span { background: rgba(255, 210, 74, .14); }
+.hex.own { background: var(--green); }
+.hex.own > span { background: rgba(74, 222, 128, .18); }
+.hex.locked > span { opacity: .55; }
+.hex.sel { background: var(--text); filter: drop-shadow(0 0 8px var(--gold)); }
+.sk-info { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; padding: 12px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); font-size: 13px; min-height: 64px; }
+.sk-head { display: flex; align-items: center; gap: 10px; }
+.sk-ic { font-size: 26px; }
+
+/* casino tycoon */
+.chip-bal span { color: var(--chip); font-weight: 900; }
+.casino-head { display: flex; justify-content: space-between; align-items: flex-end; }
+.casino-chips { font-size: 22px; font-weight: 900; color: var(--chip); }
+.biz-list { display: flex; flex-direction: column; gap: 6px; }
+.biz { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); }
+.biz-ic { font-size: 24px; }
+.biz-main { flex: 1; min-width: 0; }
+.biz-buy { min-width: 84px; padding: 8px 10px !important; }
+.chip-bal b { color: var(--chip); }
+
+.pack-pop { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px; margin-bottom: 6px; border-radius: 12px; border: 2px solid var(--rc); background: var(--card); animation: packIn .35s ease-out; }
+.pack-pop b { color: var(--rc); font-size: 16px; text-transform: uppercase; letter-spacing: .05em; }
+.r-common { --rc: #b8bdcc; } .r-uncommon { --rc: #4ade80; } .r-rare { --rc: #5ea8ff; }
+.r-epic { --rc: #c77dff; } .r-legendary { --rc: #ffb020; }
+.r-mythic { --rc: #ff4d8d; box-shadow: 0 0 24px #ff4d8d; }
+@keyframes packIn { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+/* inventory */
+.bag-item { border-left: 3px solid var(--rc); gap: 6px; }
+.bag-item .rar { color: var(--rc); font-weight: 700; }
+.bag-item .btn-gold.sm, .bag-item .btn-ghost.sm { width: auto; padding: 7px 10px; }
+.item-bet { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 12px; background: var(--card); border: 1px solid var(--gold); }
+.item-bet .btn-ghost.sm { width: auto; padding: 6px 10px; }
+.pack-item { font-weight: 800; font-size: 15px; }
+.tabs button { padding-left: 4px; padding-right: 4px; }

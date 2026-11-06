@@ -54,11 +54,33 @@
     if (done) { pending.delete(m.rid); done(m.result); }
   });
 
+  // Keys every installed extension bridge already syncs. Anything newer (casino, packs,
+  // skills) always lives in this site's storage, so new features never need a reinstall.
+  const BRIDGED = ["coins", "name", "pid", "owner", "activeDuel", "luck", "bonusAt"];
+  const split = (keys) => [[].concat(keys).filter((k) => BRIDGED.includes(k)), [].concat(keys).filter((k) => !BRIDGED.includes(k))];
+  const splitData = (data) => { const a = {}, b = {}; for (const [k, v] of Object.entries(data || {})) (BRIDGED.includes(k) ? a : b)[k] = v; return [a, b]; };
   const store = {
     mode: "local",
-    get: async (keys) => { await store.ready; return store.mode === "linked" ? (await ask("get", { keys })) || {} : ls.get(keys); },
-    set: async (data) => { await store.ready; if (store.mode === "linked") await ask("set", { data }); else ls.set(data); },
-    remove: async (keys) => { await store.ready; if (store.mode === "linked") await ask("remove", { keys }); else ls.remove(keys); },
+    get: async (keys) => {
+      await store.ready;
+      if (store.mode !== "linked") return ls.get(keys);
+      const [ext, web] = split(keys);
+      return { ...ls.get(web), ...(ext.length ? (await ask("get", { keys: ext })) || {} : {}) };
+    },
+    set: async (data) => {
+      await store.ready;
+      if (store.mode !== "linked") return ls.set(data);
+      const [ext, web] = splitData(data);
+      ls.set(web);
+      if (Object.keys(ext).length) await ask("set", { data: ext });
+    },
+    remove: async (keys) => {
+      await store.ready;
+      if (store.mode !== "linked") return ls.remove(keys);
+      const [ext, web] = split(keys);
+      ls.remove(web);
+      if (ext.length) await ask("remove", { keys: ext });
+    },
     onChange: (fn) => listeners.push(fn),
   };
 
@@ -84,16 +106,19 @@
       return ask("get", { keys: ["coins"] }).then((d) => {
         const web = ls.get(["coins", "name"]);
         if (d && typeof d.coins !== "number" && typeof web.coins === "number") return ask("set", { data: web });
-      }).then(() => mode);
+      }).then(() => { listenLs(); return mode; });
     }
+    listenLs();
+    return mode;
+  });
+  function listenLs() {
     // Other website tabs: keep in sync through localStorage events.
     window.addEventListener("storage", (e) => {
       if (!e.key || !e.key.startsWith(PREFIX)) return;
       let v; try { v = e.newValue == null ? undefined : JSON.parse(e.newValue); } catch { return; }
       emit({ [e.key.slice(PREFIX.length)]: { newValue: v } });
     });
-    return mode;
-  });
+  }
 
   window.PC_STORE = store;
 
