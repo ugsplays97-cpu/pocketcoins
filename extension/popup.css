@@ -287,3 +287,18 @@ body.win #popout { display: none; }
 .item-bet .btn-ghost.sm { width: auto; padding: 6px 10px; }
 .pack-item { font-weight: 800; font-size: 15px; }
 .tabs button { padding-left: 4px; padding-right: 4px; }
+
+/* casino floor */
+.floor { position: relative; margin: 8px 0; padding: 10px; border-radius: 14px; border: 1px solid var(--line);
+  background: radial-gradient(circle at 50% 0%, #3a1430 0%, #1a0f22 60%), repeating-linear-gradient(45deg, #ffffff06 0 8px, transparent 8px 16px); overflow: hidden; }
+.floor.neon { box-shadow: 0 0 0 1px var(--gold), 0 0 18px #ffd24a55 inset; }
+.floor.lux { background: radial-gradient(circle at 50% 0%, #5a3a10 0%, #1a0f22 65%); }
+.fl-sign { text-align: center; font-weight: 800; color: var(--gold); letter-spacing: .5px; margin-bottom: 8px; text-shadow: 0 0 8px #ffd24a66; }
+.fl-ups { font-size: 12px; }
+.fl-grid { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; min-height: 40px; align-items: center; }
+.fl-t { font-size: 22px; width: 32px; height: 32px; display: grid; place-items: center; background: #ffffff0d; border-radius: 8px; animation: flBob 2.4s ease-in-out infinite; }
+.fl-more { font-size: 11px; color: var(--gold); align-self: center; }
+.fl-guests { margin-top: 6px; font-size: 14px; white-space: nowrap; animation: flWalk 9s linear infinite; }
+.biz.owned { opacity: .7; }
+@keyframes flBob { 50% { transform: translateY(-3px); } }
+@keyframes flWalk { from { transform: translateX(-60%); } to { transform: translateX(110%); } }

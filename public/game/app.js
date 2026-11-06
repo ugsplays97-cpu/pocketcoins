@@ -249,6 +249,14 @@
     const rate = RULES.chipRate(casino);
     $("chipRate").textContent = (rate < 10 ? rate.toFixed(1) : cfmt(rate)) + "/s";
     $("casinoChips").textContent = cfmt(chips);
+    renderFloor();
+    $("upList").innerHTML = RULES.UPGRADES.map((u) => {
+      const own = RULES.hasUp(casino, u.id);
+      return `<div class="biz${own ? " owned" : ""}"><span class="biz-ic">${u.icon}</span><div class="biz-main"><b>${u.name}</b>
+        <div class="small muted">${u.desc}</div></div>${own ? `<span class="win-txt small">Owned</span>` :
+        `<button class="btn-gold sm biz-buy" data-up="${u.id}" ${coins >= u.cost ? "" : "disabled"}>${cfmt(u.cost)} 🪙</button>`}</div>`;
+    }).join("");
+    $("upList").querySelectorAll("[data-up]").forEach((btn) => (btn.onclick = () => buyUpgrade(btn.dataset.up)));
     $("casinoList").innerHTML = RULES.BUILDINGS.map((b) => {
       const n = casino[b.id] || 0, cost = RULES.buildingCost(b.id, n);
       return `<div class="biz"><span class="biz-ic">${b.icon}</span><div class="biz-main"><b>${b.name}</b> <span class="muted small">×${n}</span>
@@ -269,6 +277,30 @@
     const it = RULES.item(r.item);
     setInv([...inv, r.item]);
     $("packResult").innerHTML = `<div class="pack-pop r-${r.rarity}"><b>${r.name}!</b><span class="pack-item">${it.icon} ${it.name}</span><span>+${cfmt(r.coins)} 🪙 · +${cfmt(r.chips)} ◆</span></div>`;
+    renderCasino();
+  }
+  // The casino floor: every place you own shows up, upgrades decorate it.
+  function renderFloor() {
+    const total = RULES.BUILDINGS.reduce((n, b) => n + (casino[b.id] || 0), 0);
+    const tiles = [];
+    for (const b of RULES.BUILDINGS) {
+      const n = casino[b.id] || 0;
+      for (let i = 0; i < Math.min(n, 12); i++) tiles.push(`<span class="fl-t" title="${b.name}" style="animation-delay:${(tiles.length % 7) * 0.3}s">${b.icon}</span>`);
+      if (n > 12) tiles.push(`<span class="fl-more">+${n - 12}</span>`);
+    }
+    const ups = RULES.UPGRADES.filter((u) => RULES.hasUp(casino, u.id)).map((u) => u.icon).join(" ");
+    const guests = Math.min(8, Math.ceil(total / 3));
+    $("floor").className = "floor" + (RULES.hasUp(casino, "neon") ? " neon" : "") + (RULES.hasUp(casino, "penthouse") ? " lux" : "");
+    $("floor").innerHTML = `<div class="fl-sign">${RULES.hasUp(casino, "neon") ? "✨ " : ""}${esc(me.name || "My")}'s Casino${ups ? ` <span class="fl-ups">${ups}</span>` : ""}</div>
+      <div class="fl-grid">${tiles.join("") || `<span class="muted small">Empty floor — buy a Slot Machine to open!</span>`}</div>
+      <div class="fl-guests">${"🚶".repeat(guests)}</div>`;
+  }
+  function buyUpgrade(id) {
+    const u = RULES.UPGRADES.find((k) => k.id === id);
+    if (!u || RULES.hasUp(casino, id) || coins < u.cost) return;
+    casino = { ...casino, ["up_" + id]: 1 };
+    store.set({ casino });
+    setCoins(coins - u.cost);
     renderCasino();
   }
   function buyBuilding(id) {
