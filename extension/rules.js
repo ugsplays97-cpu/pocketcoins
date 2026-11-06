@@ -55,7 +55,13 @@
     { id: "bronze", icon: "📦", name: "Bronze Pack", cost: 250, chips: 20 },
     { id: "silver", icon: "🎁", name: "Silver Pack", cost: 2500, chips: 250 },
     { id: "gold", icon: "👑", name: "Gold Pack", cost: 25000, chips: 3000 },
+    { id: "first-limited", icon: "⏳", name: "first limited time!!!", cost: 2500, chips: 250,
+      startsAt: Date.parse("2026-11-06T10:13:00Z"), endsAt: Date.parse("2026-11-13T10:13:00Z") },
   ];
+  const packAvailable = (id, now = Date.now()) => {
+    const p = PACKS.find((k) => k.id === id);
+    return !!p && (p.startsAt == null || now >= p.startsAt) && (p.endsAt == null || now < p.endsAt);
+  };
   // Items drop from packs, sit in your bag, and can be sold or bet for their value in coins.
   const I = (id, icon, name, rarity, value) => ({ id, icon, name, rarity, value });
   const ITEMS = [
@@ -91,13 +97,14 @@
     MAX_LEVEL,
     levelMult: LEVEL_MULT,
     PACKS,
+    packAvailable,
     RARITIES,
     ITEMS,
     item: (id) => ITEMS.find((i) => i.id === id),
     /** Open a pack: rand() gives 0..1. Returns { rarity, chips, coins }. */
-    openPack: (id, rand = Math.random) => {
+    openPack: (id, rand = Math.random, now = Date.now()) => {
       const p = PACKS.find((k) => k.id === id);
-      if (!p) return null;
+      if (!p || !packAvailable(id, now)) return null;
       let r = rand() * 100, pick = RARITIES[0];
       for (const x of RARITIES) { if (r < x.odds) { pick = x; break; } r -= x.odds; }
       const roll = 0.8 + rand() * 0.4;

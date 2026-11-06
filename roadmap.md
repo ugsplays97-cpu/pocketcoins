@@ -21,3 +21,4 @@
 - [x] Casino tycoon: buildings make ◆ chips; chips buy skills and upgrade them to level 3
 - [x] Packs (Common→Mythic), skills up to level 5, no reinstall needed
 - [x] Inventory (Bag tab): pack items, sell or bet them on flips
+- [x] Add the first limited-time pack with an expiry and existing save-safe rewards

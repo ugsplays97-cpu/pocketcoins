@@ -263,8 +263,8 @@
         <div class="small muted">+${b.rate} ◆/s each</div></div>
         <button class="btn-gold sm biz-buy" data-biz="${b.id}" ${coins >= cost ? "" : "disabled"}>${cfmt(cost)} 🪙</button></div>`;
     }).join("");
-    $("packList").innerHTML = RULES.PACKS.map((p) => `<div class="biz"><span class="biz-ic">${p.icon}</span><div class="biz-main"><b>${p.name}</b>
-        <div class="small muted">Coins + ◆ chips</div></div><button class="btn-gold sm biz-buy" data-pack="${p.id}" ${coins >= p.cost ? "" : "disabled"}>${cfmt(p.cost)} 🪙</button></div>`).join("");
+    $("packList").innerHTML = RULES.PACKS.filter((p) => RULES.packAvailable(p.id)).map((p) => `<div class="biz"><span class="biz-ic">${p.icon}</span><div class="biz-main"><b>${p.name}</b>
+        <div class="small muted">${p.endsAt ? `Limited · ${Math.ceil((p.endsAt - Date.now()) / 60000).toLocaleString()} min left<br>` : ""}Coins + ◆ chips</div></div><button class="btn-gold sm biz-buy" data-pack="${p.id}" ${coins >= p.cost ? "" : "disabled"}>${cfmt(p.cost)} 🪙</button></div>`).join("");
     $("packList").querySelectorAll("[data-pack]").forEach((btn) => (btn.onclick = () => buyPack(btn.dataset.pack)));
     $("casinoList").querySelectorAll("[data-biz]").forEach((btn) => (btn.onclick = () => buyBuilding(btn.dataset.biz)));
   }
@@ -272,6 +272,7 @@
     const p = RULES.PACKS.find((k) => k.id === id);
     if (!p || coins < p.cost) return;
     const r = RULES.openPack(id);
+    if (!r) { renderCasino(); return; }
     setCoins(coins - p.cost + r.coins);
     setChips(chips + r.chips);
     const it = RULES.item(r.item);
